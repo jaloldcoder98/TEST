@@ -16,6 +16,8 @@ STRINGS = {
     "common.saved": "Saqlandi!",
     "common.skip": "O'tkazib yuborish (0)",
     "ai_coach.not_ready": "AI murabbiy hali ulanmagan — bu uchun backendda AI provayder API kaliti sozlanishi kerak. Bu sozlangach, shu yerda suhbat orqali murabbiylik ochiladi.",
+    "ai_coach.prompt": "Mashg'ulot yoki ovqatlanish haqida savol bering. Suhbatni tugatish uchun /cancel yuboring.",
+    "ai_coach.thinking": "O'ylayapman…",
     "link.usage": "Veb-saytda hisobingiz bormi? Uni botga ulash uchun /link buyrug'ini yuboring — shu bilan ikkalasida ham bir xil mashg'ulot, ovqatlanish va progressdan foydalanasiz.",
     "link.ask_username": "Veb-saytdagi foydalanuvchi nomingiz nima?",
     "link.ask_password": "Va parolingiz? (bu xabar darhol o'chiriladi)",

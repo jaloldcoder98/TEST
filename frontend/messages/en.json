@@ -182,5 +182,16 @@
     "workoutsCompleted": "Workouts completed",
     "totalVolume": "Total volume lifted",
     "noData": "Not enough data yet — log your weight or finish a workout to see charts here."
+  },
+  "aiCoach": {
+    "title": "AI Coach",
+    "subtitle": "Ask about your training or nutrition — grounded in your real exercises and logs.",
+    "placeholder": "Ask a question…",
+    "send": "Send",
+    "thinking": "Thinking…",
+    "notConfiguredTitle": "AI coach isn't connected yet",
+    "notConfiguredBody": "It needs an AI provider API key configured on the backend. Once that's set up, you'll be able to chat here for a personalized workout plan and nutrition guidance.",
+    "errorGeneric": "Something went wrong. Please try again.",
+    "newChat": "New chat"
   }
 }

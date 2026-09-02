@@ -182,5 +182,16 @@
     "workoutsCompleted": "Yakunlangan mashg'ulotlar",
     "totalVolume": "Jami ko'tarilgan og'irlik",
     "noData": "Hali yetarli ma'lumot yo'q — grafiklarni ko'rish uchun vazningizni yozing yoki mashg'ulotni yakunlang."
+  },
+  "aiCoach": {
+    "title": "AI Murabbiy",
+    "subtitle": "Mashg'ulot yoki ovqatlanish haqida so'rang — javoblar sizning haqiqiy mashqlaringiz va yozuvlaringizga asoslanadi.",
+    "placeholder": "Savol bering…",
+    "send": "Yuborish",
+    "thinking": "O'ylayapman…",
+    "notConfiguredTitle": "AI murabbiy hali ulanmagan",
+    "notConfiguredBody": "Bu uchun backendda AI provayder API kaliti sozlanishi kerak. Bu sozlangach, shu yerda shaxsiy mashg'ulot rejasi va ovqatlanish bo'yicha maslahatlar uchun suhbatlashish mumkin bo'ladi.",
+    "errorGeneric": "Xatolik yuz berdi. Qayta urinib ko'ring.",
+    "newChat": "Yangi suhbat"
   }
 }

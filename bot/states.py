@@ -31,3 +31,7 @@ class LogWeight(StatesGroup):
 
 class ExerciseSearch(StatesGroup):
     query = State()
+
+
+class AICoach(StatesGroup):
+    chatting = State()

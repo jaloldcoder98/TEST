@@ -192,3 +192,9 @@ export interface ApiErrorBody {
   success: false;
   error: { code: string; message: string };
 }
+
+export interface ChatResponse {
+  conversation_id: string;
+  context_type: string;
+  message: string;
+}

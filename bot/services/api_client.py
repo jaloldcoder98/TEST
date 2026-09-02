@@ -140,5 +140,13 @@ class BackendClient:
     async def log_weight(self, token: str, weight_kg: float) -> dict:
         return await self._request("POST", "/progress/weight", token=token, json={"weight_kg": weight_kg})
 
+    # --- AI ---------------------------------------------------------------------------------
+
+    async def ai_chat(self, token: str, message: str, conversation_id: str | None) -> dict:
+        payload: dict[str, Any] = {"message": message}
+        if conversation_id:
+            payload["conversation_id"] = conversation_id
+        return await self._request("POST", "/ai/chat", token=token, json=payload)
+
 
 backend = BackendClient()

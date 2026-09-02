@@ -19,6 +19,8 @@ STRINGS = {
     "common.saved": "Saved!",
     "common.skip": "Skip (0)",
     "ai_coach.not_ready": "The AI coach isn't connected yet — it needs an AI provider API key configured on the backend. This will unlock chat-based coaching once that's set up.",
+    "ai_coach.prompt": "Ask me anything about your training or nutrition. Send /cancel to stop chatting.",
+    "ai_coach.thinking": "Thinking…",
     "link.usage": "Already have a web account? Send /link to connect it to this bot — you'll use the same workouts, nutrition logs, and progress on both.",
     "link.ask_username": "What's your username on the website?",
     "link.ask_password": "And your password? (this message will be deleted right after)",
