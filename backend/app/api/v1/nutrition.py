@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.core.deps import get_current_user
-from app.core.errors import AppError
 from app.models import User
+from app.schemas.ai import AIFoodAnalysisResult, FoodAnalysisRequest
 from app.schemas.nutrition import DailyNutritionOut, FoodLogCreateRequest, FoodLogOut
-from app.services import nutrition_service
+from app.services import ai_service, nutrition_service
 
 router = APIRouter()
 
@@ -35,13 +35,12 @@ async def get_history(
     return await nutrition_service.get_history(db, user, date_from, date_to)
 
 
-@router.post("/analyze-image")
-async def analyze_image(user: User = Depends(get_current_user)) -> dict:
-    # Route exists to match docs/API.md's documented surface, but AI food-photo analysis is
-    # Phase 7 (blocked on an OpenAI key not yet provided) — this responds honestly instead of a
-    # generic 404 or (worse) a fake result, per spec.md §61 "no mock data in production paths".
-    raise AppError(
-        "AI_NOT_CONFIGURED",
-        "AI food analysis isn't available yet. Log the meal manually using POST /nutrition/log for now.",
-        503,
-    )
+@router.post("/analyze-image", response_model=AIFoodAnalysisResult)
+async def analyze_image(data: FoodAnalysisRequest, user: User = Depends(get_current_user)) -> AIFoodAnalysisResult:
+    # Same pipeline as POST /ai/food-analysis (docs/API.md), exposed here too since this is where
+    # a web/bot client naturally looks for it alongside manual logging. ai_service raises a clear
+    # 503 AI_NOT_CONFIGURED itself when no AI provider is set up — nothing to fake here even
+    # without a key (spec.md §61: no mock data in production paths). The result is a *suggestion*
+    # for the user to review, not an auto-saved log — POST /nutrition/log still requires their
+    # confirmation.
+    return await ai_service.analyze_food_image(data)

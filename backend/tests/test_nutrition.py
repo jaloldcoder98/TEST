@@ -90,7 +90,9 @@ def test_food_log_requires_at_least_one_item(client, auth_headers) -> None:
 
 
 def test_analyze_image_reports_not_configured(client, auth_headers) -> None:
-    response = client.post("/api/v1/nutrition/analyze-image", headers=auth_headers)
+    response = client.post(
+        "/api/v1/nutrition/analyze-image", json={"image_url": "https://example.com/meal.jpg"}, headers=auth_headers
+    )
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "AI_NOT_CONFIGURED"
 

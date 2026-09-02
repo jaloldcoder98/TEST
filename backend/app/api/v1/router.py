@@ -5,7 +5,7 @@ wires the API surface together, so `docs/API.md` and the actual routes never sil
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, exercises, nutrition, progress, users, workouts
+from app.api.v1 import ai, auth, exercises, nutrition, progress, users, workouts
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -21,7 +21,7 @@ api_router.include_router(exercises.router, prefix="/exercises", tags=["exercise
 api_router.include_router(workouts.router, tags=["workouts"])  # serves /workouts/* and /workout-sessions/*
 api_router.include_router(nutrition.router, prefix="/nutrition", tags=["nutrition"])
 api_router.include_router(progress.router, prefix="/progress", tags=["progress"])
+api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 
 # Still to add (see docs/IMPLEMENTATION_PLAN.md Phase 4):
-#   api_router.include_router(ai.router, prefix="/ai", tags=["ai"])
 #   api_router.include_router(admin.router, prefix="/admin", tags=["admin"])
