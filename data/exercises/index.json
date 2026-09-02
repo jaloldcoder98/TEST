@@ -1,0 +1,32 @@
+{
+  "name": "Exercise GIF API",
+  "baseUrl": "https://cdn.jsdelivr.net/gh/JahelCuadrado/ExerciseGymGifsDB@main",
+  "generatedAt": "2026-05-12T19:45:24.926Z",
+  "languages": [
+    "en",
+    "es"
+  ],
+  "defaultLanguage": "en",
+  "totals": {
+    "en": {
+      "muscles": 19,
+      "exercises": 1323,
+      "equipment": 12,
+      "bodyParts": 7,
+      "categories": 4
+    },
+    "es": {
+      "muscles": 19,
+      "exercises": 1323,
+      "equipment": 12,
+      "bodyParts": 7,
+      "categories": 4
+    }
+  },
+  "endpoints": {
+    "languageRoot": "{lang}/",
+    "languageIndex": "{lang}/index.json",
+    "musclesByLang": "{lang}/muscles.json",
+    "exerciseDetail": "{lang}/exercises/{muscle}/{slug}.json"
+  }
+}

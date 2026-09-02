@@ -17,6 +17,7 @@ migrate:
 
 seed:
 	docker compose exec backend python scripts/import_exercises.py
+	docker compose exec backend python scripts/seed_database.py
 
 test-backend:
 	docker compose exec backend pytest
