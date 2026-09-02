@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "exercises": "Exercises",
+    "workouts": "Workouts",
+    "nutrition": "Nutrition",
+    "aiCoach": "AI Coach",
+    "login": "Log in",
+    "start": "Get Started"
+  },
+  "landing": {
+    "heroBadge": "AI-powered personal coaching",
+    "heroTitle": "Your Personal AI Fitness Coach",
+    "heroLead": "1,300+ exercises, workout tracking, calorie and nutrition analysis — all in one place. On the web and on Telegram, in Uzbek, Russian, and English.",
+    "cta1": "Start Training",
+    "cta2": "Try AI Coach",
+    "sections": {
+      "exercisesTitle": "Exercise Database",
+      "exercisesBody": "1,300+ exercises with GIFs and step-by-step instructions, filterable by 19 muscle groups and 12 equipment types.",
+      "aiTitle": "AI Coach",
+      "aiBody": "Ask for a workout plan tailored to your goal, experience, and available equipment.",
+      "trackingTitle": "Workout Tracking",
+      "trackingBody": "Log every set, rep, and weight — your progress is calculated automatically.",
+      "nutritionTitle": "Nutrition & Calories",
+      "nutritionBody": "Send a photo of your food — AI estimates calories, protein, carbs, and fat.",
+      "progressTitle": "Progress Tracking",
+      "progressBody": "Weight, body measurements, and strength gains — visualized as charts.",
+      "telegramTitle": "Telegram Integration",
+      "telegramBody": "One account, works seamlessly on both the website and the Telegram bot."
+    }
+  }
+}

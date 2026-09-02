@@ -1,0 +1,31 @@
+{
+  "nav": {
+    "exercises": "Mashqlar",
+    "workouts": "Mashg'ulotlar",
+    "nutrition": "Ovqatlanish",
+    "aiCoach": "AI Murabbiy",
+    "login": "Kirish",
+    "start": "Boshlash"
+  },
+  "landing": {
+    "heroBadge": "Sun'iy intellektga asoslangan shaxsiy murabbiy",
+    "heroTitle": "Shaxsiy AI fitnes murabbiyingiz",
+    "heroLead": "1300+ mashq, mashg'ulot kuzatuvi, kaloriya va oziqlanish tahlili — bir joyda. Veb va Telegram orqali, o'zbek, rus va ingliz tillarida.",
+    "cta1": "Mashqni boshlash",
+    "cta2": "AI Murabbiyni sinab ko'ring",
+    "sections": {
+      "exercisesTitle": "Mashqlar bazasi",
+      "exercisesBody": "19 mushak guruhi, 12 turdagi jihoz bo'yicha filtrlangan, GIF va batafsil yo'riqnoma bilan 1300+ mashq.",
+      "aiTitle": "AI Murabbiy",
+      "aiBody": "Maqsadingiz, tajribangiz va mavjud jihozlaringizga mos mashg'ulot rejasini so'rang.",
+      "trackingTitle": "Mashg'ulot kuzatuvi",
+      "trackingBody": "Har bir set, takror va vaznni yozib boring — progress avtomatik hisoblanadi.",
+      "nutritionTitle": "Ovqatlanish va kaloriya",
+      "nutritionBody": "Ovqat suratini yuboring — AI kaloriya va oqsil/uglevod/yog' miqdorini taxmin qiladi.",
+      "progressTitle": "Progress kuzatuvi",
+      "progressBody": "Vazn, tana o'lchamlari va kuch ko'rsatkichlari — grafiklarda.",
+      "telegramTitle": "Telegram integratsiyasi",
+      "telegramBody": "Bitta akkount — veb saytda ham, Telegram botda ham ishlaydi."
+    }
+  }
+}

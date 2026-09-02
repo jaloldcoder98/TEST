@@ -7,3 +7,8 @@ dist/
 build/
 .next/
 data/exercises/source-api/
+.pytest_cache/
+*.log
+next-env.d.ts
+.DS_Store
+*.tsbuildinfo
