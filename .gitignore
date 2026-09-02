@@ -13,3 +13,7 @@ build/
 next-env.d.ts
 .DS_Store
 *.tsbuildinfo
+playwright-report/
+test-results/
+blob-report/
+coverage/
