@@ -35,6 +35,10 @@ async def update_me(
         "goal",
         "experience_level",
         "activity_level",
+        "daily_calorie_target",
+        "protein_target_g",
+        "carbs_target_g",
+        "fat_target_g",
     ):
         value = getattr(data, field)
         if value is not None:

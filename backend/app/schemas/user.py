@@ -45,3 +45,7 @@ class UserUpdateRequest(BaseModel):
     goal: Goal | None = None
     experience_level: ExperienceLevel | None = None
     activity_level: ActivityLevel | None = None
+    daily_calorie_target: int | None = None
+    protein_target_g: int | None = None
+    carbs_target_g: int | None = None
+    fat_target_g: int | None = None
