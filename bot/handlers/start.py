@@ -1,10 +1,10 @@
 """/start onboarding (spec.md §30):
 
-  /start -> no linked account -> pick language -> (Phase 6: create account via backend)
-         -> existing account -> show dashboard
+  /start -> pick language -> POST /auth/telegram (creates a bot-only account the first time,
+            or logs back into the linked one) -> main menu
 
-Phase 2 wires the language-selection step end-to-end against a stub; Phase 6 replaces the stub
-with real calls to POST /auth/register and GET /users/me on the backend.
+/link (handlers/link.py) is the separate flow for attaching an *existing* web account instead
+of the auto-provisioned bot-only one.
 """
 
 from aiogram import Router
@@ -14,6 +14,7 @@ from aiogram.types import CallbackQuery, Message
 from keyboards.language import LANGUAGE_KEYBOARD
 from keyboards.main_menu import main_menu_keyboard
 from locales import t
+from services.session import ensure_session
 
 router = Router(name="start")
 
@@ -29,7 +30,18 @@ async def cmd_start(message: Message) -> None:
 @router.callback_query(lambda c: c.data and c.data.startswith("lang:"))
 async def on_language_selected(callback: CallbackQuery) -> None:
     lang = callback.data.split(":", 1)[1]
-    # Phase 6: persist this on the user's backend profile (PATCH /users/me) once account
-    # creation/linking is implemented; for now it only drives this session's replies.
-    await callback.message.answer(t("welcome", lang), reply_markup=main_menu_keyboard(lang))
+    user = callback.from_user
+
+    try:
+        session = await ensure_session(user.id, callback.message.chat.id, user.username, user.first_name, lang)
+    except Exception:
+        await callback.message.answer(t("common.error", lang))
+        await callback.answer()
+        return
+
+    # A returning, already-linked user keeps their previously-chosen language rather than
+    # switching languages just because they tapped a different button on this /start — but for a
+    # brand-new account, `session.language` *is* what was just picked, so this is a no-op there.
+    name = user.first_name or user.username or ""
+    await callback.message.answer(t("welcome_back", session.language, name=name), reply_markup=main_menu_keyboard(session.language))
     await callback.answer()
