@@ -34,6 +34,16 @@ class UserOut(BaseModel):
     profile: UserProfileOut | None = None
 
 
+class TelegramLinkRequest(BaseModel):
+    """POST /users/me/link-telegram — attaches a Telegram account to the *currently
+    authenticated* user (after the bot has verified their username/password via POST
+    /auth/login), so a user who registered on the web can use the same account in the bot."""
+
+    telegram_id: int
+    chat_id: int
+    telegram_username: str | None = None
+
+
 class UserUpdateRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
