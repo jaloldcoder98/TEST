@@ -50,6 +50,11 @@ class Settings(BaseSettings):
     default_page_size: int = 20
     max_page_size: int = 100
 
+    # --- Rate limiting (spec §37: brute-force/credential-stuffing protection on auth) ---
+    # Disabled only by the test suite (tests/conftest.py sets RATE_LIMIT_ENABLED=false before the
+    # app is imported) so dozens of tests reusing one client/IP don't trip real limits.
+    rate_limit_enabled: bool = True
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
