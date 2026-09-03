@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Enum, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -52,8 +52,11 @@ class TelegramUser(Base, UUIDPrimaryKeyMixin):
     __tablename__ = "telegram_users"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
-    telegram_id: Mapped[int] = mapped_column(unique=True, index=True)
-    chat_id: Mapped[int]
+    # Plain `Mapped[int]` maps to a 32-bit INTEGER, but Telegram user/chat ids routinely exceed
+    # that (e.g. 7741611853) since Telegram widened its id space — BigInteger avoids
+    # "value out of int32 range" errors on real accounts.
+    telegram_id: Mapped[int] = mapped_column(BigInteger, unique=True, index=True)
+    chat_id: Mapped[int] = mapped_column(BigInteger)
     telegram_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
     linked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
