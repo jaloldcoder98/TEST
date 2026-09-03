@@ -180,3 +180,59 @@ bot/data/scripts), matching spec §47.
    does not block development.
 4. **`sled` equipment value** — not in the spec's enum; propose adding it rather than
    discarding data.
+
+## 8. Implementation notes & known gaps (post-build, Phase 10)
+
+How the open decisions above actually resolved, plus decisions made and gaps left open during
+Phases 4–9 that this document didn't originally anticipate:
+
+1. **GitHub target** — confirmed as `jaloldcoder98/TEST`; a PAT was provided and used for every
+   push in this build (kept out of git via `.env`/shell env only, never committed — verified with
+   `git ls-files`).
+2. **OpenAI API key** — still not provided as of Phase 10. Every AI feature (chat coach, workout
+   generation, nutrition Q&A, food-photo analysis) is fully built and wired end-to-end across
+   backend, web app, and bot, but returns an honest `503 AI_NOT_CONFIGURED` until a key is set.
+   See the README's "AI features" section.
+3. **`sled` equipment value** — added to the `equipment` enum/table; confirmed present in the
+   imported data (12 equipment types total, `sled` among them).
+4. **Media licensing** — still an open product-owner decision; unchanged from §1.6.
+5. **RU/UZ exercise content is not populated — the most consequential open gap.** The app's UI
+   chrome (navigation, forms, buttons, bot messages) is fully localized in all three languages via
+   next-intl and the bot's `locales/` package. Exercise **names and instructions**, however, are
+   only seeded in English (`exercise_translations`: 1323 EN rows, 0 RU rows, 0 UZ rows) — exactly
+   as §5 anticipated ("`ru` and `uz` rows are not created by the importer"), but the admin
+   enrichment workflow that was meant to backfill them was never built (admin CRUD in general was
+   descoped after Phase 4 to stay focused on the user-facing product). A Russian- or
+   Uzbek-speaking user browsing exercises today sees English exercise names inside an otherwise
+   fully-translated interface. Closing this gap needs either (a) a bulk AI-assisted translation
+   pass over 1323 rows (feasible once an OpenAI key exists — the existing `AIProvider.structured()`
+   abstraction could drive it directly) with human review before trusting it, since fitness cueing
+   language needs to stay precise, or (b) the admin CRUD endpoints to let staff translate
+   exercise-by-exercise. Neither is implemented yet.
+6. **Frontend auth is client-side JWT, not SSR cookies.** `frontend/lib/stores/auth-store.ts`
+   persists the access/refresh token pair to `localStorage` via Zustand, and every protected route
+   sits behind a client component `<AuthGuard>` rather than a server-side session check. This was
+   a deliberate scope choice for a JWT-bearer-token API that the Telegram bot also consumes
+   directly — see the file's own comment for the reasoning — not an oversight; it does mean an XSS
+   bug would be able to read the token (mitigated by never using `dangerouslySetInnerHTML`
+   anywhere in the app — see `docs/SECURITY_AUDIT.md`).
+7. **Telegram ↔ web account unification.** Not designed up front in this document. Resolved as:
+   `POST /auth/telegram` auto-provisions or re-authenticates a bot-only account (idempotent per
+   `telegram_id`, using the schema's already-nullable `password_hash` for bot-only users), and
+   `POST /users/me/link-telegram` attaches an existing web account by re-validating its real
+   password via the normal login path (never a new/parallel auth mechanism). A conflict (that
+   Telegram ID already linked elsewhere) is a `409 TELEGRAM_ALREADY_LINKED`, tested explicitly.
+8. **Rate limiting**, absent from the §2 architecture diagram, was added in Phase 9:
+   `backend/app/core/rate_limit.py`, a Redis-backed fixed-window limiter on `/auth/*`, fail-open if
+   Redis is down. Full writeup in `docs/SECURITY_AUDIT.md`.
+9. **Redis today only backs rate-limit counters** — the §2 diagram's "Redis cache" box and the ARQ
+   worker are both real (worker process runs, connects, is deployed) but nothing calls into either
+   for caching or background jobs yet; `app/workers/worker.py` has a single placeholder task.
+   Response caching and real background jobs (nutrition daily rollups, notification delivery) are
+   future performance work, not a v1 requirement that got missed.
+10. **Exercise search uses plain `ILIKE`**, not PostgreSQL full-text search (`pg_trgm`/`tsvector`).
+    Simple, correct, and fast enough at 1323 rows; revisit if the exercise table grows by an order
+    of magnitude or search relevance becomes a complaint.
+11. **`GET /workouts` (a user's own workout list) has no pagination**, unlike the shared exercise
+    list. Low severity — user-owned data, not the 1323-row shared table — deferred rather than
+    fixed; see `docs/SECURITY_AUDIT.md`'s pagination section for the full reasoning.
