@@ -1,3 +1,11 @@
+# TODO(webapp-first): TZ §2/§45 — meal-logging FSM duplicates the Web App's nutrition diary; same treatment as
+# handlers/workouts.py (stub + legacy flag, audit §2).
+#
+# TZ §18 — a photo sent to the bot should not be analyzed in chat. Reply with
+# "Food analysis is available in GYM App" plus a web_app button at ?startapp=nutrition-analyze,
+# and let the Web App's camera/upload flow do the work.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Nutrition: today's totals (menu button) and manual meal logging via /logmeal — mirrors the
 web app's /nutrition page (manual entry only; AI photo analysis is still Phase 7)."""
 

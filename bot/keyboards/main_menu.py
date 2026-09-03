@@ -1,3 +1,9 @@
+# TODO(webapp-first): TZ §2/§43 — this seven-button reply keyboard *is* the duplicate bot UI the spec rules out.
+# It should become a single web_app button ("🚀 GYM APP'NI OCHISH" / "ОТКРЫТЬ" / "OPEN"),
+# localized per user. keyboards/workouts.py and keyboards/nutrition.py retire with the
+# handlers that use them (audit §2).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 from aiogram.types import KeyboardButton, ReplyKeyboardMarkup
 
 from locales import t

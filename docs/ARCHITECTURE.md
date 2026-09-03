@@ -1,5 +1,10 @@
 # GYM Platform — Architecture
 
+> **Note (2026-09-03):** the project is pivoting to a Telegram Mini App-first architecture.
+> This document still describes the current bot+web split; the gap analysis and the plan to
+> close it live in [WEBAPP_FIRST_AUDIT.md](./WEBAPP_FIRST_AUDIT.md). Update this file as part
+> of that work.
+
 Status: Phase 1 (analysis). No application code has been written yet.
 
 ## 1. Source repository analysis: `ExerciseGymGifsDB`

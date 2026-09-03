@@ -1,3 +1,12 @@
+/* TODO(webapp-first): TZ §10 — <html className="dark"> hardcodes the theme. The Mini App has to follow Telegram:
+ * read colorScheme/themeParams and map --tg-theme-* onto our own tokens, while still working
+ * standalone in a browser (see lib/telegram/theme.ts in the plan).
+ *
+ * TZ §40 — PWA metadata is missing entirely: manifest link, themeColor, and a viewport with
+ * viewport-fit=cover (needed before the bottom nav's safe-area insets do anything).
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";

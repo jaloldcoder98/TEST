@@ -1,5 +1,12 @@
 "use client";
 
+/* TODO(webapp-first): TZ §31 — the card below loads ex.gif_url, i.e. the full animated GIF, for every exercise in
+ * the list. ExerciseSummary already carries image_url (the CDN thumbnail, imported by
+ * backend/scripts/import_exercises.py); use it here and keep the GIF for the detail page.
+ * Across 1,323 exercises this is the single biggest startup-cost win available (audit §4.5).
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams } from "next/navigation";

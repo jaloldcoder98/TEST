@@ -1,3 +1,8 @@
+# TODO(webapp-first): Audit §1.3 — this limiter keys on client IP only. AI quotas have to be per *user* (TZ §32:
+# per-user daily AI limit, per-user food-analysis limit), and behind a proxy every request
+# can share one IP anyway. Add a user-keyed variant that reuses the same Redis backend.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Fixed-window rate limiting for the most abuse-sensitive endpoints — login, register, refresh,
 and the Telegram auto-auth endpoint (spec.md §37: brute-force / credential-stuffing protection).
 

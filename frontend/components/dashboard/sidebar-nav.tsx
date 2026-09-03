@@ -1,5 +1,10 @@
 "use client";
 
+/* TODO(webapp-first): TZ §12 — desktop nav is missing Progress' siblings from the spec: Profile and Settings have
+ * no routes yet (audit §4.4). Once bottom-nav.tsx exists this component becomes lg:-only.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { usePathname } from "next/navigation";

@@ -1,3 +1,10 @@
+# TODO(webapp-first): TZ §29 — three routers named in the spec don't exist yet:
+#   /notifications  (the Notification model exists; nothing exposes it — needed for TZ §25
+#                    reminder preferences so notifications never become spam)
+#   /favorites      (currently folded into exercises.py)
+#   /admin          (AI usage + cost dashboard, TZ §32)
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Aggregates every /api/v1/* sub-router. Individual routers (auth, users, exercises, ...) are
 added here as each is implemented in Phase 4 — this file is intentionally the single place that
 wires the API surface together, so `docs/API.md` and the actual routes never silently drift.

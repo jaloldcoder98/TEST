@@ -1,3 +1,16 @@
+# TODO(webapp-first): TZ §3/§4 — the welcome message here is one hardcoded bilingual blob. The spec wants the
+# full localized welcome (uz/ru/en, with the feature list and emoji) chosen by the user's
+# language: their saved profile language when we know it, else message.from_user.language_code.
+# Move the copy into bot/locales/*.py.
+#
+# TZ §24 — deep links are not handled at all. /start carries a payload for
+# t.me/<bot>?start=nutrition (CommandObject.args); it should be forwarded to the Mini App URL
+# as ?startapp=... so the Web App opens on the right screen.
+#
+# The https:// fallback below stays — see audit §2 on keeping the bot usable before a public
+# HTTPS URL exists.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """/start onboarding.
 
 Primary flow (when FRONTEND_URL is configured, config.py): /start sends a single "Open App"

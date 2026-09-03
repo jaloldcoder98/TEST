@@ -1,5 +1,17 @@
 "use client";
 
+/* TODO(webapp-first): TZ §9/§14/§21/§22/§24 — this gate does ready() + expand() + login, which was the right
+ * starting point but is only a fraction of the SDK surface the spec asks for:
+ *   · BackButton / MainButton wiring (TZ §21, §22)
+ *   · theme + viewport events (TZ §10)
+ *   · haptics, used sparingly (TZ §9)
+ *   · initDataUnsafe.start_param -> route to the deep-linked screen (TZ §24)
+ *   · new user (onboarding_completed === false) -> /onboarding instead of /dashboard (TZ §14)
+ * Extract the typed SDK wrapper and hooks into lib/telegram/ rather than growing this file;
+ * the `declare global` block below moves there too.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 

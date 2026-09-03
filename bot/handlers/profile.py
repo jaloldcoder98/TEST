@@ -1,3 +1,8 @@
+# TODO(webapp-first): TZ §2/§45 — profile viewing/editing belongs in the Web App (/profile, /settings). Keep only
+# the language switch as a fallback for when no Mini App URL is configured; the rest becomes an
+# "Open in GYM App" reply at ?startapp=profile (audit §2).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Profile/Settings: shows the linked account and lets the user change their bot language,
 persisted to the backend the same way the web app's profile settings do (PATCH /users/me)."""
 

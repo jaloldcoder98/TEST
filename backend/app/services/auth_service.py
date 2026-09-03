@@ -1,3 +1,9 @@
+# TODO(webapp-first): BLOCKER (audit §1.1). `telegram_auth()` below trusts data.telegram_id straight from the
+# request body — see the note in app/api/v1/auth.py. `telegram_webapp_auth()` is the correct
+# model: it derives the user from a verified HMAC signature. Bring the bot path up to a
+# comparable trust level before this backend is ever exposed publicly.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 import uuid
 from datetime import datetime, timezone
 

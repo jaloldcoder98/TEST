@@ -1,5 +1,11 @@
 "use client";
 
+/* TODO(webapp-first): TZ §14 — the store has no notion of whether onboarding is done, so nothing can route a new
+ * Telegram user to the wizard instead of the dashboard. Add onboarding_completed (from
+ * GET /users/me) once the backend field exists.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 

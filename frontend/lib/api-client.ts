@@ -1,5 +1,14 @@
 "use client";
 
+/* TODO(webapp-first): TZ §6 — when a refresh fails, refreshAccessToken() clears the session and the guard bounces
+ * the user to /login. Inside Telegram there is no login to do: re-authenticate silently from
+ * Telegram.WebApp.initData instead, and only fall through to /login in a plain browser.
+ *
+ * TZ §20 — every request here is JSON. Camera uploads need a multipart path (no Content-Type
+ * header, FormData body) for POST /nutrition/analyze-image.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { ApiErrorBody, TokenResponse } from "@/lib/types";
 
