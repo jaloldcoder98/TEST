@@ -60,7 +60,11 @@ services:
   frontend:
     build: ./frontend
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      # The Next.js server proxies /api/v1/* to this address itself (next.config.mjs) — the
+      # browser only ever calls the frontend's own origin, which is what lets one public HTTPS
+      # URL (e.g. an ngrok tunnel pointed at this service, for Telegram Mini App testing) serve
+      # both the site and its API without exposing the backend separately.
+      BACKEND_INTERNAL_URL: http://backend:8000
     ports:
       - "3000:3000"
     depends_on:

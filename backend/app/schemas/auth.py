@@ -30,6 +30,16 @@ class TelegramAuthRequest(BaseModel):
     language: Language = Language.UZ
 
 
+class TelegramWebAppAuthRequest(BaseModel):
+    """POST /auth/telegram-webapp — auth entry point for the Telegram Mini App. `init_data` is
+    the raw `Telegram.WebApp.initData` string the frontend reads from the Telegram client; the
+    server verifies its signature (app/core/telegram_webapp.py) before trusting anything in it,
+    since — unlike the bot calling /auth/telegram directly — this arrives from client-side JS.
+    """
+
+    init_data: str = Field(min_length=1)
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 

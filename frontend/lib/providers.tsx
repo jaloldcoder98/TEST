@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { ApiError } from "@/lib/api-client";
+import { TelegramWebAppGate } from "@/components/telegram/telegram-webapp-gate";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -23,5 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       })
   );
 
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TelegramWebAppGate>{children}</TelegramWebAppGate>
+    </QueryClientProvider>
+  );
 }

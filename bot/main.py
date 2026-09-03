@@ -3,7 +3,7 @@ import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import BotCommand
+from aiogram.types import BotCommand, MenuButtonCommands, MenuButtonWebApp, WebAppInfo
 
 from config import settings
 from handlers import ai_coach, common, exercises, help as help_handler, link, nutrition, profile, progress, start, workouts
@@ -34,6 +34,16 @@ async def main() -> None:
         dp.include_router(router)
 
     await bot.set_my_commands(BOT_COMMANDS)
+
+    # The persistent button next to the message box (an alternative entry point to the /start
+    # message's own button — this one's always there, even before a user has ever typed
+    # anything). Same https:// requirement and same graceful fallback as handlers/start.py.
+    if settings.frontend_url.startswith("https://"):
+        await bot.set_chat_menu_button(
+            menu_button=MenuButtonWebApp(text="Open App", web_app=WebAppInfo(url=settings.frontend_url))
+        )
+    else:
+        await bot.set_chat_menu_button(menu_button=MenuButtonCommands())
 
     logging.info("GYM bot starting (long polling)...")
     try:

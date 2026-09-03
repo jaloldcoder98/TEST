@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, setRequestLocale } from "next-intl/server";
+import Script from "next/script";
 
 import { locales } from "@/i18n";
 import { Providers } from "@/lib/providers";
@@ -30,6 +31,11 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} className="dark">
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
+        {/* Harmless outside Telegram — window.Telegram just never gets set, and
+            components/telegram/telegram-webapp-gate.tsx treats that as "not a Mini App" and
+            renders the normal site. beforeInteractive so it's present before that gate's effect
+            runs. */}
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
         <NextIntlClientProvider messages={messages}>
           <Providers>{children}</Providers>
         </NextIntlClientProvider>

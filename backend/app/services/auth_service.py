@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import get_settings
 from app.core.errors import AppError, UnauthorizedError
 from app.core.security import (
     JWTError,
@@ -14,7 +15,9 @@ from app.core.security import (
     hash_token,
     verify_password,
 )
+from app.core.telegram_webapp import verify_telegram_webapp_init_data
 from app.models import RefreshToken, TelegramUser, User
+from app.models.enums import Language
 from app.repositories.user_repository import UserRepository
 from app.schemas.auth import RegisterRequest, TelegramAuthRequest, TokenResponse
 
@@ -56,15 +59,28 @@ async def login(db: AsyncSession, username: str, password: str) -> TokenResponse
     return await _issue_tokens(db, user)
 
 
-async def telegram_auth(db: AsyncSession, data: TelegramAuthRequest) -> TokenResponse:
+async def _telegram_login_or_provision(
+    db: AsyncSession,
+    *,
+    telegram_id: int,
+    chat_id: int,
+    telegram_username: str | None,
+    first_name: str | None,
+    language: Language,
+) -> TokenResponse:
+    """Shared core behind both Telegram auth entry points — the bot calling `/auth/telegram`
+    directly (trusted because only our bot process, reading real Telegram updates, can call it)
+    and the Mini App calling `/auth/telegram-webapp` (trusted because its initData signature was
+    already verified against the bot token — see app/core/telegram_webapp.py). Both just need "log
+    into the account linked to this telegram_id, or auto-provision one," so they share this."""
     existing = (
-        await db.execute(select(TelegramUser).where(TelegramUser.telegram_id == data.telegram_id))
+        await db.execute(select(TelegramUser).where(TelegramUser.telegram_id == telegram_id))
     ).scalar_one_or_none()
 
     if existing is not None:
-        existing.chat_id = data.chat_id
-        if data.telegram_username:
-            existing.telegram_username = data.telegram_username
+        existing.chat_id = chat_id
+        if telegram_username:
+            existing.telegram_username = telegram_username
         repo = UserRepository(db)
         user = await repo.get_by_id(existing.user_id)
         if user is None or not user.is_active:
@@ -76,31 +92,69 @@ async def telegram_auth(db: AsyncSession, data: TelegramAuthRequest) -> TokenRes
     # users.password_hash is nullable precisely for this case) rather than forcing a Telegram
     # user through a web-style registration flow they can't fill out inline.
     repo = UserRepository(db)
-    username = f"tg_{data.telegram_id}"
+    username = f"tg_{telegram_id}"
     suffix = 0
     while await repo.get_by_username(username) is not None:
         suffix += 1
-        username = f"tg_{data.telegram_id}_{suffix}"
+        username = f"tg_{telegram_id}_{suffix}"
 
     user = await repo.create(
         username=username,
         email=None,
         password_hash=None,
-        first_name=data.first_name,
+        first_name=first_name,
         last_name=None,
-        language=data.language,
+        language=language,
     )
     db.add(
         TelegramUser(
             user_id=user.id,
-            telegram_id=data.telegram_id,
-            chat_id=data.chat_id,
-            telegram_username=data.telegram_username,
+            telegram_id=telegram_id,
+            chat_id=chat_id,
+            telegram_username=telegram_username,
             linked_at=datetime.now(timezone.utc),
         )
     )
     await db.flush()
     return await _issue_tokens(db, user)
+
+
+async def telegram_auth(db: AsyncSession, data: TelegramAuthRequest) -> TokenResponse:
+    return await _telegram_login_or_provision(
+        db,
+        telegram_id=data.telegram_id,
+        chat_id=data.chat_id,
+        telegram_username=data.telegram_username,
+        first_name=data.first_name,
+        language=data.language,
+    )
+
+
+async def telegram_webapp_auth(db: AsyncSession, init_data: str) -> TokenResponse:
+    """POST /auth/telegram-webapp — the Mini App's auth entry point. `init_data` is the raw
+    `Telegram.WebApp.initData` string; app/core/telegram_webapp.py verifies it was genuinely
+    issued by Telegram for this bot before we trust anything in it."""
+    settings = get_settings()
+    if not settings.telegram_bot_token:
+        raise AppError("TELEGRAM_NOT_CONFIGURED", "Telegram integration is not configured on this server", 503)
+
+    parsed = verify_telegram_webapp_init_data(init_data, settings.telegram_bot_token)
+    tg_user = parsed.get("user") or {}
+    telegram_id = tg_user.get("id")
+    if telegram_id is None:
+        raise UnauthorizedError("Telegram Web App init data is missing the user")
+
+    # A Mini App opened from a private chat with the bot doesn't carry a separate chat id the way
+    # a bot Update does — but for a private 1:1 chat, Telegram's chat id *is* the user id, so this
+    # is the same value the bot itself would send for the same user.
+    return await _telegram_login_or_provision(
+        db,
+        telegram_id=telegram_id,
+        chat_id=telegram_id,
+        telegram_username=tg_user.get("username"),
+        first_name=tg_user.get("first_name"),
+        language=Language.UZ,
+    )
 
 
 async def refresh(db: AsyncSession, refresh_token: str) -> TokenResponse:

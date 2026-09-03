@@ -36,6 +36,28 @@ make seed                # imports the 1323-exercise dataset into Postgres
   `telegram-bot` container will fail to start (it requires a token) — comment it out in
   `docker-compose.yml` if you don't need the bot yet.
 
+## Telegram Mini App
+
+`/start` shows an **"Open App"** button that launches the frontend *inside Telegram* — from there,
+everything (workouts, nutrition, AI coach, progress, language) happens in that embedded page, not
+in a text conversation with the bot. This needs `FRONTEND_URL` in `.env` to be a real, public
+**https://** URL (Telegram refuses `http://` and can't reach a Docker-internal or `localhost`
+address at all) — leave it empty and the bot falls back to its original text-command flow instead
+of showing a broken button.
+
+For local testing, the simplest way to get one is a tunnel:
+
+```bash
+ngrok http 3000            # prints a https://*.ngrok-free.app URL
+# set FRONTEND_URL to that URL in .env, then:
+docker compose restart telegram-bot
+```
+
+Only the frontend's port needs tunneling — its Next.js server proxies `/api/v1/*` to the backend
+internally (`next.config.mjs`), so the browser inside Telegram only ever talks to one origin. See
+`docs/ARCHITECTURE.md` §8.12 for how the Mini App authenticates (`Telegram.WebApp.initData`,
+verified server-side against the bot token) and more detail.
+
 ## Quickstart — running natively (no Docker)
 
 This is the path actually exercised end-to-end while building this project (Postgres/Redis

@@ -19,6 +19,9 @@ import os
 import pytest
 
 os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+# A known value so tests/test_telegram_webapp_auth.py can sign initData the same way Telegram
+# would and get a real, verifiable match — never a production secret.
+os.environ.setdefault("TELEGRAM_BOT_TOKEN", "test-telegram-bot-token")
 
 from fastapi.testclient import TestClient  # noqa: E402
 

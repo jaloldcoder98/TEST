@@ -236,3 +236,32 @@ Phases 4–9 that this document didn't originally anticipate:
 11. **`GET /workouts` (a user's own workout list) has no pagination**, unlike the shared exercise
     list. Low severity — user-owned data, not the 1323-row shared table — deferred rather than
     fixed; see `docs/SECURITY_AUDIT.md`'s pagination section for the full reasoning.
+12. **Telegram Mini App (Web App), added post-Phase-10** — the bot's primary entry point is now a
+    single "Open App" button (`/start`, and the persistent chat menu button set in `bot/main.py`)
+    that launches the frontend *inside Telegram* as a Web App, rather than a text-command
+    conversation. Everything — workouts, nutrition, AI coach, progress, language — happens in that
+    embedded page from there; the original text/FSM handlers (`bot/handlers/*.py`) are left intact
+    and still work standalone, but are no longer the primary UX.
+    - **Auth.** `frontend/components/telegram/telegram-webapp-gate.tsx` reads
+      `Telegram.WebApp.initData` on load and posts it to `POST /auth/telegram-webapp`, which
+      recomputes Telegram's own HMAC signature over it (`backend/app/core/telegram_webapp.py`,
+      per Telegram's documented algorithm) before trusting anything inside — this is the
+      difference from the bot-side `/auth/telegram`: that one is trusted because only our bot
+      process (reading real Telegram updates) can call it, whereas `initData` arrives from
+      client-side JS and could otherwise be forged with an arbitrary `telegram_id`. Both funnel
+      into the same account-provisioning core (`auth_service._telegram_login_or_provision`) so a
+      person gets the same account whether they open the bot or the Mini App first.
+    - **Single-origin proxy, not two public URLs.** The browser inside Telegram only ever talks to
+      the frontend's own origin — `frontend/next.config.mjs` proxies `/api/v1/*` server-side to
+      `BACKEND_INTERNAL_URL` (the Docker-internal `http://backend:8000` by default). This means
+      testing the Mini App needs exactly **one** public HTTPS tunnel, on the frontend's port, not
+      a separate one for the backend too.
+    - **Local testing (e.g. via ngrok):** `ngrok http 3000`, then set `FRONTEND_URL` in the root
+      `.env` to the `https://*.ngrok-free.app` (or reserved-domain) URL ngrok prints, and restart
+      the `telegram-bot` service (`docker compose restart telegram-bot`) so it picks up the new
+      button URL — no image rebuild needed, it's a plain env var. A free ngrok tunnel's URL
+      changes on every restart unless a reserved domain is configured, so this is a repeat-each-
+      session step for local testing; a real deployment behind a stable domain removes it.
+    - **Not done:** Telegram theme params (`Telegram.WebApp.themeParams`) aren't applied to the
+      frontend's own color tokens — the app just renders in its normal dark theme regardless of
+      the user's Telegram theme. Cosmetic, not functional.

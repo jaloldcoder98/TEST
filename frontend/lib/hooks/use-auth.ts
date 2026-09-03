@@ -24,6 +24,17 @@ async function fetchMe(): Promise<User> {
   return api.get<User>("/users/me");
 }
 
+/** Auth entry point for the Telegram Mini App (see components/telegram/telegram-webapp-gate.tsx).
+ * Not a react-query mutation like the others below — it runs once, imperatively, from an effect
+ * before the rest of the app renders, so there's no UI action to attach a mutation hook to. */
+export async function telegramWebAppLogin(initData: string): Promise<User> {
+  const tokens = await api.post<TokenResponse>("/auth/telegram-webapp", { init_data: initData }, { skipAuth: true });
+  useAuthStore.setState({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
+  const user = await fetchMe();
+  useAuthStore.getState().setSession(tokens.access_token, tokens.refresh_token, user);
+  return user;
+}
+
 export function useCurrentUser() {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery({

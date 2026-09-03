@@ -3,7 +3,12 @@
 import { useAuthStore } from "@/lib/stores/auth-store";
 import type { ApiErrorBody, TokenResponse } from "@/lib/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+// Relative by default so the browser always calls the site's own origin — next.config.mjs
+// proxies /api/v1/* to the backend server-side. This is what makes the app work from a single
+// public HTTPS URL (e.g. an ngrok tunnel for Telegram Mini App testing) without also exposing
+// the backend separately. Set NEXT_PUBLIC_API_URL to override (e.g. pointing straight at a
+// backend running outside Docker during native local dev — see README).
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "/api/v1";
 
 export class ApiError extends Error {
   code: string;
@@ -56,7 +61,12 @@ interface RequestOptions {
 }
 
 function buildUrl(path: string, params?: RequestOptions["params"]) {
-  const url = new URL(`${API_URL}${path}`);
+  // API_URL is relative by default (see above), and `new URL()` requires an absolute string
+  // unless given a base — window.location.origin covers both a real browser and the jsdom test
+  // environment (which stubs one too), and this only touches the *first* argument's parsing, not
+  // where the request actually goes: fetch() below resolves the returned string against the page
+  // origin exactly like any relative URL would.
+  const url = new URL(`${API_URL}${path}`, window.location.origin);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null && value !== "") {
