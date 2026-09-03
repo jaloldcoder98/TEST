@@ -1,3 +1,13 @@
+# TODO(webapp-first): TZ §17/§20 — analyze_image() accepts only a JSON `image_url`, so a phone camera capture
+# has nowhere to go. Add a multipart upload variant that stores the file via a (still to be
+# written) storage_service and feeds the vision model from there.
+#
+# TZ §33 — the AI must identify the food, not be the nutrition database. Today its calorie
+# and macro numbers are returned to the user verbatim. Long term those should be looked up
+# in a real food database; see audit §6.4 for the staged plan (ship with AI estimates clearly
+# labelled approximate, add the database as its own phase).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 from datetime import date as date_
 
 from fastapi import APIRouter, Depends, Query

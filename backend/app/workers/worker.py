@@ -1,3 +1,9 @@
+# TODO(webapp-first): TZ §25 — this is where the reminder pipeline goes, and it is still the placeholder it
+# shipped as. Needed: ARQ cron jobs for workout / nutrition / weekly-progress reminders that
+# respect each user's notification settings, plus a delivery path to the bot. Nothing in the
+# product sends a single notification today.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """ARQ worker entrypoint. Empty task list for now — Phase 4+ adds real background jobs here
 (AI food-image analysis, nutrition_daily rollups, notification delivery, ...).
 """

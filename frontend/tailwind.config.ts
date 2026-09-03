@@ -1,3 +1,9 @@
+/* TODO(webapp-first): TZ §8/§39 — the bottom nav needs safe-area padding utilities (env(safe-area-inset-bottom))
+ * so it clears the iOS home indicator inside Telegram. Add them here alongside the existing
+ * tokens; the light-theme values themselves live in app/globals.css.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import type { Config } from "tailwindcss";
 
 /**

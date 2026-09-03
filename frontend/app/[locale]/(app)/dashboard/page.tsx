@@ -1,5 +1,12 @@
 "use client";
 
+/* TODO(webapp-first): TZ §13 — the Dashboard is the Mini App's home screen and the spec lists more than this shows:
+ * avatar, current weight, protein against target, today's planned workout, weekly workout count,
+ * current streak, and the quick-action row (Start Workout / Log Food / Analyze Food / Ask AI /
+ * Exercises). Streak and weekly count need backend support in the progress summary.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useParams } from "next/navigation";

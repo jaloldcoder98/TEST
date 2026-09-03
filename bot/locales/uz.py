@@ -1,3 +1,9 @@
+# TODO(webapp-first): TZ §3/§25 — needs the full three-language welcome copy from the spec (feature list + button
+# label) and the notification strings (workout reminder, nutrition reminder, weekly progress).
+# Strings belonging to retired chat-side flows can go with them. Same edits in ru.py and en.py;
+# bot/tests/test_locales.py asserts all three stay in sync, so update it together (audit §2).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 STRINGS = {
     "welcome": "GYM AI Murabbiyingizga xush kelibsiz! Davom etish uchun tilni tanlang.",
     "welcome_back": "Xush kelibsiz, {name}!",

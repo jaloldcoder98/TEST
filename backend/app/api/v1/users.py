@@ -1,3 +1,9 @@
+# TODO(webapp-first): TZ §14 — the 12-step onboarding needs POST /users/me/onboarding: accepts the wizard answers
+# in one call, computes BMR (Mifflin-St Jeor), TDEE and the macro split, persists them, and
+# marks onboarding_completed. There is no BMR/TDEE code anywhere in the project today, so
+# app/services/onboarding_service.py has to be written for it.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

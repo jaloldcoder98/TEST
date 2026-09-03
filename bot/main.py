@@ -1,3 +1,8 @@
+# TODO(webapp-first): TZ §2 — BOT_COMMANDS advertises eight commands, six of which drive chat-side UI the Web App
+# already owns. Trim to /start, /app, /help and /settings once the handlers are stubbed
+# (audit §2). The set_chat_menu_button block below already does the right thing and stays.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 import asyncio
 import logging
 

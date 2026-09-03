@@ -1,3 +1,13 @@
+# TODO(webapp-first): TZ §2/§45 — 299 lines of workout UI inside the chat: this is the single largest violation of
+# "the bot must NOT duplicate Web App functionality". Everything here (create workout, pick
+# exercises, log sets, history) already exists in the Web App.
+#
+# Plan (audit §2): replace the handlers with a one-line "Open in GYM App" reply carrying a
+# web_app button at ?startapp=workouts, and move this file to bot/handlers/legacy/ behind an
+# ENABLE_LEGACY_BOT_UI flag that defaults to off — so nothing breaks in a deployment that has
+# no public HTTPS URL yet. Update bot/tests/test_workouts_handler.py to match.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Workouts: list/create/start/track, the bot's equivalent of the web app's /workouts pages.
 Session tracking has no GET /workout-sessions/{id} to resume from (docs/API.md) — same
 constraint the frontend documents — so all session state lives in the FSM context for the

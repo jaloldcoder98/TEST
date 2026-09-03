@@ -1,3 +1,7 @@
+# TODO(webapp-first): TZ §2/§45 — duplicates the Web App's progress screen. Reduce to an "Open in GYM App" reply
+# with a web_app button at ?startapp=progress (audit §2, legacy flag applies here too).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Progress: workout/volume summary (menu button) and /logweight, matching the web app's
 /progress page's weight-logging (body measurements stay web-only for now — a lot of fields to
 walk through by text; a reasonable Phase 6+ follow-up)."""

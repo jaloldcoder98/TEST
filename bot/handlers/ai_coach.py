@@ -1,3 +1,7 @@
+# TODO(webapp-first): TZ §2/§45 — duplicates the Web App's ai screen. Reduce to an "Open in GYM App" reply
+# with a web_app button at ?startapp=ai (audit §2, legacy flag applies here too).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """AI Coach: a real chat against POST /ai/chat (Phase 7). Every reply goes through the same
 backend endpoint the web app uses, so an unconfigured AI provider produces the exact same honest
 "not connected yet" message everywhere (spec.md §61: no mock data in production paths) rather

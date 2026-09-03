@@ -1,3 +1,13 @@
+# TODO(webapp-first): TZ §7/§14 — the account model is missing fields the Web App needs:
+#   User.avatar_url          (TZ §7, and the Dashboard greeting shows an avatar)
+#   User.username            currently NOT NULL + unique, which forces a synthetic username
+#                            for every Telegram-only user; make it nullable
+#   UserProfile.training_days_per_week, available_equipment (JSONB), onboarding_completed
+#                            — onboarding steps 9, 10 and the new-user check have nowhere to
+#                            persist to right now
+# Each of these needs an Alembic migration alongside the model change.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 import uuid
 from datetime import date, datetime
 

@@ -1,5 +1,12 @@
 "use client";
 
+/* TODO(webapp-first): TZ §17 — the AI food analyzer, the spec's headline nutrition feature, has no UI at all. It
+ * needs its own route (/nutrition/analyze): Take Photo / Upload Photo / describe-in-text, then
+ * per-food result cards with a TOTAL block and Add to Diary / Edit Portion / Analyze Again.
+ * This page keeps the manual diary and links to it; /nutrition/history is also still missing.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useTranslations } from "next-intl";
 
 import { Badge } from "@/components/ui/badge";

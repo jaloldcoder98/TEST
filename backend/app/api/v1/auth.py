@@ -1,3 +1,13 @@
+# TODO(webapp-first): BLOCKER (audit §1.1). POST /auth/telegram issues a JWT for whatever `telegram_id` the
+# request body claims, with no signature check at all — it assumes only our own bot process
+# can reach it, but nothing enforces that. Anyone who can reach this port owns any account.
+# TZ §28 forbids exactly this. Fix: require a shared INTERNAL_API_KEY header from the bot
+# (preferred, non-breaking), or drop the endpoint entirely.
+#
+# Also: TZ §5 names /auth/telegram as the initData endpoint. We keep initData on
+# /auth/telegram-webapp instead — see audit §6.1 for why renaming would be worse.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 

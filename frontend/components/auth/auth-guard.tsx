@@ -1,5 +1,11 @@
 "use client";
 
+/* TODO(webapp-first): TZ §6/§14 — inside Telegram this guard can dead-end a user: if the stored session is gone it
+ * redirects to /login, a page a Mini App user should never see. It should instead re-run the
+ * initData exchange, and send users whose onboarding_completed is false to /onboarding.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 

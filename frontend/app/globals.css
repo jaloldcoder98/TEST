@@ -1,3 +1,12 @@
+/*
+  TODO(webapp-first): TZ §10 — only a dark palette is defined here, and app/[locale]/layout.tsx pins class="dark".
+  The Mini App must follow the Telegram client's theme. Restructure as: :root = light,
+  :root[data-theme="dark"] = dark, plus a bridging layer that maps --tg-theme-bg-color,
+  --tg-theme-text-color, --tg-theme-button-color and friends onto these tokens when they are
+  present, so the same components work inside and outside Telegram.
+  See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+*/
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

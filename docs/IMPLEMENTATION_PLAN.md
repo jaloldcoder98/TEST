@@ -1,5 +1,9 @@
 # GYM Platform — Implementation Plan
 
+> **Note (2026-09-03):** phases below cover the platform as originally specified. The Telegram
+> Mini App-first re-architecture is planned separately in
+> [WEBAPP_FIRST_AUDIT.md](./WEBAPP_FIRST_AUDIT.md) §7.
+
 Phases follow spec §60/§63. Each phase ends with tests + lint + type-check green and docs
 updated before moving on (spec §63). This plan does not assume the whole system ships in one
 sitting — realistically this is weeks of engineering, so it is broken into milestones that each

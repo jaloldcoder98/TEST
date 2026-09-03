@@ -1,3 +1,11 @@
+# TODO(webapp-first): Audit §1.2 — _MAX_AGE_SECONDS is 24h, so a captured initData string stays usable for a
+# whole day. Tighten to ~1h and make it configurable via app/core/config.py.
+#
+# Also needed for TZ §24 deep links: initData carries `start_param` when the Mini App is
+# opened via t.me/<bot>?startapp=nutrition. Parse and return it so the frontend can route
+# the user to the right screen on first paint.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Validates Telegram Mini App (Web App) `initData` per Telegram's documented algorithm:
 https://core.telegram.org/bots/webapps#validating-data-received-via-the-web-app
 

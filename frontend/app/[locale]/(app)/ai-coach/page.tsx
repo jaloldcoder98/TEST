@@ -1,5 +1,12 @@
 "use client";
 
+/* TODO(webapp-first): TZ §16 — the spec routes this at /ai and asks for suggested questions, quick actions and
+ * streamed responses (SSE). Today it is a plain buffered request/response chat.
+ * Rename the route (keep a redirect from /ai-coach) and add the streaming client once the
+ * backend exposes /ai/chat/stream.
+ * See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+ */
+
 import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Bot, Send, User as UserIcon } from "lucide-react";

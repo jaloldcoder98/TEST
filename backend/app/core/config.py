@@ -1,3 +1,9 @@
+# TODO(webapp-first): New settings the Web App-first work needs: INTERNAL_API_KEY (audit §1.1),
+# INIT_DATA_MAX_AGE_SECONDS (§1.2), AI_DAILY_LIMIT_PER_USER and AI_VISION_DAILY_LIMIT (TZ §32).
+# The STORAGE_* variables in .env.example are declared but never read — wire them up when
+# storage_service.py lands for camera uploads (TZ §20).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Central application settings, loaded from environment variables (.env in dev).
 
 Nothing here is hardcoded per spec rule "do not hardcode secrets" (spec.md §61) — every

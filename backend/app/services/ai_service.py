@@ -1,3 +1,8 @@
+# TODO(webapp-first): TZ §32 — no token accounting, no cost tracking, no per-user daily cap, no model selection
+# by task (cheap text model for chat, vision model only for photos). All of it lands here.
+# TZ §35 is already satisfied (responses follow user.language); don't regress it.
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """AI Coach, workout generation, nutrition Q&A, and food-photo analysis (Phase 7).
 
 Every AI call goes through the AIProvider abstraction (app/ai/providers) — never the OpenAI SDK

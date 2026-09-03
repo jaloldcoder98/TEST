@@ -1,3 +1,7 @@
+# TODO(webapp-first): TZ §2/§45 — duplicates the Web App's exercises screen. Reduce to an "Open in GYM App" reply
+# with a web_app button at ?startapp=exercises (audit §2, legacy flag applies here too).
+# See docs/WEBAPP_FIRST_AUDIT.md for the full plan.
+
 """Exercise search — a lightweight, text-based version of the web app's /exercises page. Full
 filtering by muscle/equipment/body-part/category lives on the web; the bot covers the common
 "what's a good exercise for X" case via free-text search against the same /exercises endpoint."""
