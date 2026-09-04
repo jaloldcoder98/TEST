@@ -4,8 +4,12 @@
 (`initData` freshness va replay) va D-19 (CSRF qatlamlari) qarorlarini **taxmin qilmasdan,
 o'lchab** tasdiqlash — auth kodi yozilishidan oldin.
 
-**Holat:** vosita tayyor va tekshirilgan · simulyatsiya bajarildi · **fizik qurilma testlari
-bajarilmagan — ular mahsulot egasi tomonidan bajarilishi kerak** (sabab pastda).
+**Holat:** 0-bosqich **OCHIQ**. Kod va simulyatsiya qismi mahsulot egasi tomonidan qabul
+qilindi; uchta fizik qurilma testi kutilmoqda. Yo'riqnoma: `docs/PHASE0_TEST_RUNBOOK.md`.
+
+> ⚠️ **`Partitioned` cookie Chromium simulyatsiyasida ishlagani Telegram Android/iOS/Desktop
+> WebView'da ham aynan shunday ishlashini isbotlamaydi.** Real test natijalarisiz D-13/D-15
+> bo'yicha yakuniy xulosa chiqarilmaydi. Bu §6 dagi barcha mulohazalarga taalluqli.
 
 ---
 
@@ -138,41 +142,32 @@ cd tools/webview-sim && node run.mjs --json                   # mashina uchun
 
 ---
 
-## 5. Fizik qurilma testi — bajarilish qo'llanmasi
+## 5. Fizik qurilma testi
 
-### 5.1 Tayyorgarlik (bir marta)
+To'liq yo'riqnoma alohida hujjatda: **`docs/PHASE0_TEST_RUNBOOK.md`** — test boti, `.env`,
+tunnel, har qurilmadagi qadamlar, tozalash va nosozliklarni bartaraf etish.
 
-Telegram faqat haqiqiy `https://` manzilni qabul qiladi (`http://` va `localhost` ishlamaydi).
+Diagnostika sahifasi to'rt qadamdan iborat va mahsulot egasi qayd etadigan 10 bandning
+hammasini qamrab oladi:
 
-```bash
-# 1. Loyihani ishga tushiring (README'dagi native yoki Docker yo'li)
-#    DEBUG=true bo'lishi SHART — diagnostika endpointlari faqat shunda mavjud.
-#    TELEGRAM_BOT_TOKEN ham to'ldirilgan bo'lishi kerak.
+| # | Band | Tugma |
+|---|---|---|
+| 1 | `Set-Cookie` qabul qilindimi | 1 |
+| 2 | `Secure` / `SameSite=None` / `Partitioned` holati | 1 |
+| 3 | Yopib qayta ochganda cookie saqlanadimi | **2** |
+| 4 | `initData` mavjudmi | 1 |
+| 5 | Qayta ochilganda payload o'zgardimi (fingerprint solishtiruvi) | **2** |
+| 6 | `auth_date` va 300s freshness | 1, 2 |
+| 7 | POST so'rovda `Origin` bormi | 1 |
+| 8 | `Referer` bormi | 1 |
+| 9 | Cookie yo'q holatda silent re-auth | **3** |
+| 10 | Native WebView bo'yicha amaliy xulosa | avtomatik (`verdict`) |
 
-# 2. Frontend portiga (3000) HTTPS tunnel oching
-ngrok http 3000            # https://xxxx.ngrok-free.app manzilini beradi
+Qo'shimcha: `steps.init_data_replay` — aynan bir xil `initData` ikkinchi marta ham qabul
+qilinishi (D-17). `false` chiqsa, bir martalik nonce qoidasi kirib qolgan degani.
 
-# 3. .env dagi FRONTEND_URL ni o'sha manzilga qo'ying va botni qayta ishga tushiring
-docker compose restart telegram-bot     # yoki botni qayta ishga tushiring
-```
-
-Diagnostika sahifasi manzili:
-`https://<sizning-tunnel-manzilingiz>/_diag/webview.html`
-
-Uni **botning "Open App" tugmasi** orqali oching (brauzerda emas) — shundagina Telegram
-`initData` beradi. Buning uchun `.env` dagi `FRONTEND_URL` ni vaqtincha to'g'ridan-to'g'ri
-diagnostika sahifasiga yo'naltirish eng oson yo'l.
-
-### 5.2 Har bir qurilmada (≈5 daqiqa)
-
-1. Telegram'da botni oching → **Open App**.
-2. **1-tugma**: "To'liq tekshiruvni ishga tushirish". Natijalar jadvali to'ladi.
-3. Mini App'ni **butunlay yoping** — orqaga emas, yopish; chatdan ham chiqing.
-4. Mini App'ni **qaytadan oching** → **2-tugma**: "Qayta ochgandan keyin cookie'ni tekshirish".
-   *(Bu qadam eng muhimi — D-14 dagi 7 kunlik sessiya shunga bog'liq.)*
-5. **3-tugma**: "Natijani nusxalash" → natijani menga yuboring.
-
-Uchala qurilmada (Android, iOS, Desktop) takrorlang.
+Hisobotda shaxsiy ma'lumot yo'q: `telegram_id` va cookie qiymati maskalangan, `initData` esa
+faqat 6 baytlik fingerprint sifatida yoziladi — payloadning o'zi hech qachon hisobotga tushmaydi.
 
 ### 5.3 To'ldiriladigan matritsa
 
@@ -199,7 +194,11 @@ Uchala qurilmada (Android, iOS, Desktop) takrorlang.
 
 ## 6. Dastlabki xulosalar
 
-Fizik natijalarsiz ham simulyatsiya ikkita qarorni mustahkamladi:
+> Quyidagilar **Chromium'dagi dalilga asoslangan mulohazalar**, yakuniy xulosa emas. Native
+> WebView (Android/iOS/Desktop) o'zining cookie do'koni, umri va tozalash siyosatiga ega —
+> ular §5 dagi real test bilan o'lchanadi.
+
+Fizik natijalarsiz ham simulyatsiya ikkita qarorni **qo'llab-quvvatlaydi**:
 
 1. **D-13 dagi `Partitioned` atributi olib tashlanmasin.** Uchinchi tomon cookie'lari bloklangan
    Chromium'da faqat u cookie'ni saqlab qoladi.
