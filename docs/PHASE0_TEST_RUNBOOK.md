@@ -65,23 +65,43 @@ FRONTEND_URL=
 
 ### 1.3 Loyihani ishga tushirish
 
-**Docker bilan:**
+**Docker bilan (Linux / macOS):**
 ```bash
 make up
 make migrate
 make seed
 ```
 
+**Docker bilan (Windows / PowerShell)** — `make` odatda o'rnatilmagan va PowerShell 5.1 da `&&`
+operatori yo'q, shuning uchun har buyruqni **alohida qatorda** yozing:
+
+```powershell
+docker compose up --build -d
+docker compose exec backend alembic upgrade head
+docker compose exec backend python scripts/import_exercises.py
+docker compose exec backend python scripts/seed_database.py
+```
+
+To'liq Windows buyruqlari jadvali — §7.
+
 **Docker'siz (README dagi native yo'l):** backend `:8000`, frontend `:3000` da ishlashi kerak.
 Frontend `/api/v1/*` ni backendga o'zi uzatadi — **bitta ommaviy manzil yetarli**, backendni
 alohida ochish shart emas va CORS sozlash kerak emas.
 
-Tekshiruv:
+Tekshiruv (Linux / macOS):
 ```bash
 curl -s http://localhost:3000/_diag/webview.html | head -3      # sahifa bormi
 curl -s http://localhost:8000/api/v1/_diag/env                   # DEBUG rejimi ishlayaptimi
 ```
-Ikkinchisi JSON qaytarishi kerak. `404` qaytsa — `DEBUG` `true` emas.
+
+Tekshiruv (Windows / PowerShell) — PowerShell'da `curl` aslida `Invoke-WebRequest` uchun
+taxallus va `-s` bayrog'ini tushunmaydi, shuning uchun boshqa buyruq ishlatiladi:
+```powershell
+Invoke-RestMethod http://localhost:8000/api/v1/_diag/env
+(Invoke-WebRequest http://localhost:3000/_diag/webview.html).StatusCode
+```
+
+Birinchisi JSON qaytarishi kerak. `404` qaytsa — `DEBUG` `true` emas.
 
 ### 1.4 Tunnel
 
@@ -108,6 +128,7 @@ Botni qayta ishga tushiring, u yangi manzilni o'qib olsin:
 ```bash
 docker compose restart telegram-bot
 ```
+*(Bu buyruq Windows'da ham aynan shunday.)*
 
 > Ngrok'ning bepul tarifida URL har qayta ishga tushirishda o'zgaradi. O'zgarsa — `FRONTEND_URL`
 > ni yangilang va botni qayta ishga tushiring.
@@ -215,3 +236,56 @@ D-13 / D-15 / D-19 bo'yicha yakuniy xulosa yozaman.
 
 Xatoni hal qila olmasangiz — ekran rasmini yuboring, tokensiz. **Xato matnida token
 ko'rinmasligiga ishonch hosil qiling.**
+
+---
+
+## 7. Windows (PowerShell) buyruqlari
+
+PowerShell 5.1 (Windows'dagi standart) Unix qobig'idan uch joyda farq qiladi va uchalasi ham bu
+yo'riqnomada uchraydi.
+
+| Farq | Unix'da | PowerShell'da |
+|---|---|---|
+| Buyruqlarni ulash | `make up && make migrate` | `&&` **yo'q** — har buyruq alohida qatorda |
+| `make` | o'rnatilgan | odatda **yo'q** — `docker compose` ni to'g'ridan-to'g'ri chaqiring |
+| `curl` | haqiqiy curl | `Invoke-WebRequest` uchun taxallus; `-s` kabi bayroqlarni tushunmaydi |
+
+> PowerShell 7+ da `&&` ishlaydi. Versiyani tekshirish: `$PSVersionTable.PSVersion`
+
+### Makefile maqsadlarining PowerShell muqobili
+
+| `make` | PowerShell |
+|---|---|
+| `make up` | `docker compose up --build -d` |
+| `make down` | `docker compose down` |
+| `make logs` | `docker compose logs -f` |
+| `make migrate` | `docker compose exec backend alembic upgrade head` |
+| `make seed` | `docker compose exec backend python scripts/import_exercises.py`<br>`docker compose exec backend python scripts/seed_database.py` |
+| `make test-bot` | `docker compose exec telegram-bot pytest` |
+| `make backend-shell` | `docker compose exec backend bash` |
+
+`make up` fonda ishlamaydi (terminalni band qiladi) — Windows'da `-d` qo'shilgani shuning uchun:
+keyingi buyruqlarni o'sha oynada yozishingiz mumkin. Loglarni ko'rish uchun
+`docker compose logs -f telegram-bot`.
+
+### Boshqa muqobillar
+
+```powershell
+# .env yaratish
+Copy-Item .env.example .env
+
+# Tasodifiy JWT siri (openssl rand -hex 32 o'rniga)
+-join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Maximum 256) })
+
+# Faqat bir xizmatni qayta ishga tushirish
+docker compose restart telegram-bot
+
+# Backend loglarini ko'rish (DEBUG ishlayaptimi tekshirish uchun)
+docker compose logs --tail 50 backend
+```
+
+`.env` huquqlari: Unix'dagi `chmod 600` o'rniga Windows'da fayl sizning foydalanuvchi
+profilingiz ichida tursa yetarli. Umumiy mashinada bo'lsa:
+```powershell
+icacls .env /inheritance:r /grant:r "$env:USERNAME:(R,W)"
+```
