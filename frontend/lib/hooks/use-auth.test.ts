@@ -9,7 +9,7 @@ function jsonResponse(status: number, body: unknown): Response {
 
 describe("telegramWebAppLogin", () => {
   beforeEach(() => {
-    useAuthStore.setState({ accessToken: null, refreshToken: null, user: null });
+    useAuthStore.setState({ accessToken: null, csrfToken: null, user: null });
     vi.stubGlobal("fetch", vi.fn());
   });
 
@@ -19,14 +19,15 @@ describe("telegramWebAppLogin", () => {
 
   it("exchanges initData for tokens, fetches the profile, and stores the session", async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce(jsonResponse(200, { access_token: "tg-access", refresh_token: "tg-refresh" }))
+      .mockResolvedValueOnce(jsonResponse(200, { access_token: "tg-access", csrf_token: "tg-csrf" }))
       .mockResolvedValueOnce(jsonResponse(200, { id: "u1", username: "tg_123" }));
 
     const user = await telegramWebAppLogin("query_id=abc&user=%7B%7D&auth_date=1&hash=deadbeef");
 
     expect(user).toEqual({ id: "u1", username: "tg_123" });
     expect(useAuthStore.getState().accessToken).toBe("tg-access");
-    expect(useAuthStore.getState().refreshToken).toBe("tg-refresh");
+    expect(useAuthStore.getState().csrfToken).toBe("tg-csrf");
+    // The refresh token is never in the response body — it arrives as an httpOnly cookie (D-13).
     expect(useAuthStore.getState().user).toEqual({ id: "u1", username: "tg_123" });
 
     const [authCall] = vi.mocked(fetch).mock.calls[0];

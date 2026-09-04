@@ -17,3 +17,9 @@ playwright-report/
 test-results/
 blob-report/
 coverage/
+
+# Redis snapshots. redis-server writes dump.rdb into whatever directory it was started from,
+# which during a local test run is usually backend/ — test-run rate-limit counters and initData
+# hashes are not repository content.
+dump.rdb
+*.rdb

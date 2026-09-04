@@ -1,0 +1,8 @@
+{
+  "name": "webview-sim",
+  "private": true,
+  "type": "module",
+  "description": "Phase 0 cross-site iframe cookie simulation (see docs/TELEGRAM_WEBVIEW_MATRIX.md)",
+  "scripts": { "start": "node run.mjs" },
+  "dependencies": { "playwright": "1.56.1" }
+}

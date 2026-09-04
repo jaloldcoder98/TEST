@@ -258,7 +258,8 @@ Phases 4–9 that this document didn't originally anticipate:
       a separate one for the backend too.
     - **Local testing (e.g. via ngrok):** `ngrok http 3000`, then set `FRONTEND_URL` in the root
       `.env` to the `https://*.ngrok-free.app` (or reserved-domain) URL ngrok prints, and restart
-      the `telegram-bot` service (`docker compose restart telegram-bot`) so it picks up the new
+      the `telegram-bot` service (`docker compose up -d --build telegram-bot` — `restart` reuses the
+      container's existing environment and image, so it would pick up neither) so it takes the new
       button URL — no image rebuild needed, it's a plain env var. A free ngrok tunnel's URL
       changes on every restart unless a reserved domain is configured, so this is a repeat-each-
       session step for local testing; a real deployment behind a stable domain removes it.

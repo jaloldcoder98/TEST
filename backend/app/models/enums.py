@@ -12,6 +12,21 @@ class Language(str, enum.Enum):
     EN = "en"
 
 
+class UserRole(str, enum.Enum):
+    """Platform-level role (docs/DECISIONS.md D-30). `TRAINER` is reserved: it is part of the
+    enum so the door stays open, but nothing grants or checks it yet.
+
+    When multi-tenancy arrives (D-42), org-scoped roles move to `organization_members` and this
+    column keeps only platform staff — which is why a single column is right today and a
+    many-to-many table would be work thrown away later.
+    """
+
+    USER = "user"
+    TRAINER = "trainer"
+    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
+
+
 class Gender(str, enum.Enum):
     MALE = "male"
     FEMALE = "female"

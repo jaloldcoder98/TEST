@@ -1,62 +1,43 @@
-"""/link — attach an *existing* web account to this Telegram account, instead of the bot-only
-one auto-provisioned on first /start. Validates credentials via the same POST /auth/login the
-website uses, then POST /users/me/link-telegram with the resulting token."""
+"""/link — kept as a command, but there is nothing left to link.
+
+It used to attach an existing web account to a Telegram account by asking for the website
+username and password. With Telegram as the only identity (docs/DECISIONS.md D-10) the Telegram
+account *is* the account: whoever opens the bot or the Mini App first creates it, and both
+surfaces sign into the same one.
+
+The command survives rather than being deleted because people who used it before will type it
+again, and "unknown command" would leave them wondering what happened to their data (D: 5-round
+E4). It now explains, and points at the app.
+"""
 
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, Message, WebAppInfo
 
+from config import settings
 from keyboards.main_menu import main_menu_keyboard
 from locales import t
-from services.api_client import BackendAPIError, backend
-from services.session import get_language, set_session
-from states import LinkAccount
+from services.session import get_language
 
 router = Router(name="link")
 
 
 @router.message(Command("link"))
-async def start_link(message: Message, state: FSMContext) -> None:
+async def link_command(message: Message, state: FSMContext) -> None:
+    # Clear any state left over from an interrupted flow, so /link is always a safe way out.
+    await state.clear()
     lang = get_language(message.from_user.id)
-    await state.set_state(LinkAccount.username)
-    await message.answer(t("link.ask_username", lang))
 
-
-@router.message(LinkAccount.username)
-async def receive_username(message: Message, state: FSMContext) -> None:
-    lang = get_language(message.from_user.id)
-    await state.update_data(username=message.text.strip())
-    await state.set_state(LinkAccount.password)
-    await message.answer(t("link.ask_password", lang))
-
-
-@router.message(LinkAccount.password)
-async def receive_password(message: Message, state: FSMContext) -> None:
-    lang = get_language(message.from_user.id)
-    data = await state.get_data()
-    username = data["username"]
-    password = message.text
-
-    # The password never needs to stay in the chat log.
-    try:
-        await message.delete()
-    except Exception:
-        pass
-
-    try:
-        tokens = await backend.login(username, password)
-        await backend.link_telegram(
-            tokens["access_token"], message.from_user.id, message.chat.id, message.from_user.username
+    if settings.frontend_url.startswith("https://"):
+        await message.answer(
+            t("link.already_connected", lang),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [InlineKeyboardButton(text=t("start.open_app", lang), web_app=WebAppInfo(url=settings.frontend_url))]
+                ]
+            ),
         )
-    except BackendAPIError as exc:
-        await state.clear()
-        if exc.code == "TELEGRAM_ALREADY_LINKED":
-            await message.answer(t("link.already_linked", lang))
-        else:
-            await message.answer(t("link.invalid", lang))
         return
 
-    set_session(message.from_user.id, tokens["access_token"], tokens["refresh_token"], lang)
-    await state.clear()
-    await message.answer(t("link.success", lang, username=username), reply_markup=main_menu_keyboard(lang))
+    await message.answer(t("link.already_connected", lang), reply_markup=main_menu_keyboard(lang))

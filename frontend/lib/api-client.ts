@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/lib/stores/auth-store";
-import type { ApiErrorBody, TokenResponse } from "@/lib/types";
+import type { ApiErrorBody, SessionResponse } from "@/lib/types";
 
 // Relative by default so the browser always calls the site's own origin — next.config.mjs
 // proxies /api/v1/* to the backend server-side. This is what makes the app work from a single
@@ -23,33 +23,66 @@ export class ApiError extends Error {
 
 let refreshPromise: Promise<string | null> | null = null;
 
-async function refreshAccessToken(): Promise<string | null> {
-  const { refreshToken, setTokens, user, setSession, clear } = useAuthStore.getState();
-  if (!refreshToken) return null;
+/**
+ * Recover a session after a 401, in two steps (docs/DECISIONS.md D-15, invariant 16).
+ *
+ * First try the refresh cookie. It may simply not be there — Telegram Web runs the Mini App in a
+ * cross-site iframe where Safari blocks the cookie outright, and iOS WKWebView is documented to
+ * drop stored data unpredictably. That is a normal condition, not an error, which is why the
+ * second step exists: ask Telegram for fresh `initData` and start a new session with it. Only if
+ * *both* fail is the user really signed out.
+ *
+ * Concurrent 401s are coalesced into one attempt: the refresh token is single-use and rotating
+ * it twice in parallel would trip the server's reuse detection and revoke the whole family.
+ */
+async function recoverSession(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
 
-  // Coalesce concurrent 401s into a single refresh call instead of racing multiple rotations
-  // against the single-use refresh token (app/core/security.py rotates + revokes on use).
-  if (!refreshPromise) {
-    refreshPromise = fetch(`${API_URL}/auth/refresh`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    })
-      .then(async (res) => {
-        if (!res.ok) throw new Error("refresh failed");
-        const data: TokenResponse = await res.json();
-        if (user) setSession(data.access_token, data.refresh_token, user);
-        else setTokens(data.access_token, data.refresh_token);
-        return data.access_token;
-      })
-      .catch(() => {
-        clear();
-        return null;
-      })
-      .finally(() => {
-        refreshPromise = null;
-      });
-  }
+  refreshPromise = (async () => {
+    const { csrfToken, setTokens, clear } = useAuthStore.getState();
+
+    if (csrfToken) {
+      try {
+        const res = await fetch(`${API_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+        });
+        if (res.ok) {
+          const data: SessionResponse = await res.json();
+          setTokens(data.access_token, data.csrf_token);
+          return data.access_token;
+        }
+      } catch {
+        // Network failure — fall through to re-authentication rather than giving up.
+      }
+    }
+
+    const initData = typeof window !== "undefined" ? window.Telegram?.WebApp?.initData : undefined;
+    if (initData) {
+      try {
+        const res = await fetch(`${API_URL}/auth/telegram-webapp`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ init_data: initData }),
+        });
+        if (res.ok) {
+          const data: SessionResponse = await res.json();
+          setTokens(data.access_token, data.csrf_token);
+          return data.access_token;
+        }
+      } catch {
+        // Same again: nothing left to try, fall through to clearing state.
+      }
+    }
+
+    clear();
+    return null;
+  })().finally(() => {
+    refreshPromise = null;
+  });
+
   return refreshPromise;
 }
 
@@ -87,11 +120,15 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
   const res = await fetch(buildUrl(path, params), {
     method,
     headers,
+    // Ordinary requests authenticate with the bearer header, but the cookie has to ride along so
+    // /auth/refresh can find it — and sending it costs nothing elsewhere, since no other endpoint
+    // reads it (D-19).
+    credentials: "include",
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
   if (res.status === 401 && !skipAuth && !isRetry) {
-    const newToken = await refreshAccessToken();
+    const newToken = await recoverSession();
     if (newToken) return request<T>(path, options, true);
   }
 

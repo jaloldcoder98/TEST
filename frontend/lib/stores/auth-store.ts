@@ -1,34 +1,37 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 import type { User } from "@/lib/types";
 
+/**
+ * Session state, held **only in memory** (docs/DECISIONS.md D-12).
+ *
+ * Nothing here is persisted. The access token is short-lived and the refresh token never reaches
+ * JavaScript at all — it lives in an httpOnly cookie the server sets (D-13). That is the whole
+ * point: a reload does not restore the session from storage, it silently re-authenticates with
+ * fresh `initData` from Telegram (D-15), so there is no long-lived credential sitting in
+ * localStorage for an XSS bug to walk off with.
+ *
+ * `csrfToken` is the double-submit half of the CSRF pair (D-19): held here, echoed in
+ * `X-CSRF-Token` on the two endpoints that authenticate from the cookie.
+ */
 interface AuthState {
   accessToken: string | null;
-  refreshToken: string | null;
+  csrfToken: string | null;
   user: User | null;
-  setSession: (accessToken: string, refreshToken: string, user: User) => void;
+  setSession: (accessToken: string, csrfToken: string, user: User) => void;
   setUser: (user: User) => void;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, csrfToken: string) => void;
   clear: () => void;
 }
 
-// Persisted to localStorage (client-only) rather than an httpOnly cookie — this is a JWT SPA
-// dashboard, not an SSR-authenticated app, so every protected page is a client component behind
-// <AuthGuard> (see components/auth/auth-guard.tsx) rather than a server-side redirect.
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      refreshToken: null,
-      user: null,
-      setSession: (accessToken, refreshToken, user) => set({ accessToken, refreshToken, user }),
-      setUser: (user) => set({ user }),
-      setTokens: (accessToken, refreshToken) => set({ accessToken, refreshToken }),
-      clear: () => set({ accessToken: null, refreshToken: null, user: null }),
-    }),
-    { name: "gym-auth" }
-  )
-);
+export const useAuthStore = create<AuthState>()((set) => ({
+  accessToken: null,
+  csrfToken: null,
+  user: null,
+  setSession: (accessToken, csrfToken, user) => set({ accessToken, csrfToken, user }),
+  setUser: (user) => set({ user }),
+  setTokens: (accessToken, csrfToken) => set({ accessToken, csrfToken }),
+  clear: () => set({ accessToken: null, csrfToken: null, user: null }),
+}));

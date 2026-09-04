@@ -11,9 +11,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db
-from app.core.errors import UnauthorizedError
+from app.core.errors import NotFoundError, UnauthorizedError
 from app.core.security import JWTError, decode_access_token
 from app.models import User
+from app.models.enums import UserRole
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -45,12 +46,27 @@ async def get_current_user(
     return user
 
 
-async def get_current_admin(user: User = Depends(get_current_user)) -> User:
-    from app.core.errors import ForbiddenError
+def require_role(*allowed: UserRole):
+    """Dependency factory guarding a route by role (docs/DECISIONS.md D-30, D-112).
 
-    if not user.is_admin:
-        raise ForbiddenError("Admin access required")
-    return user
+    Insufficient role answers **404, not 403**. A 403 would confirm that an admin surface exists
+    at that path, which is exactly what someone probing for one wants to learn; 404 makes the
+    admin API indistinguishable from empty space. Missing or invalid credentials still answer
+    401 — that is about the caller's token, not about what exists on the server.
+    """
+
+    async def dependency(user: User = Depends(get_current_user)) -> User:
+        if user.role not in allowed:
+            raise NotFoundError("NOT_FOUND", "Not found")
+        return user
+
+    return dependency
+
+
+# Named guards for the two role sets that exist today. `trainer` is reserved in the enum but
+# nothing grants it yet (D-30), so nothing guards by it either.
+get_current_admin = require_role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+get_current_super_admin = require_role(UserRole.SUPER_ADMIN)
 
 
 async def get_current_user_optional(

@@ -4,7 +4,6 @@
     "workouts": "Mashg'ulotlar",
     "nutrition": "Ovqatlanish",
     "aiCoach": "AI Murabbiy",
-    "login": "Kirish",
     "start": "Boshlash",
     "dashboard": "Bosh sahifa",
     "progress": "Progress",
@@ -29,7 +28,9 @@
       "progressBody": "Vazn, tana o'lchamlari va kuch ko'rsatkichlari — grafiklarda.",
       "telegramTitle": "Telegram integratsiyasi",
       "telegramBody": "Bitta akkount — veb saytda ham, Telegram botda ham ishlaydi."
-    }
+    },
+    "openInTelegram": "Telegramda ochish",
+    "telegramOnly": "Ilova Telegram ichida ishlaydi — kirish uchun botni oching."
   },
   "common": {
     "save": "Saqlash",

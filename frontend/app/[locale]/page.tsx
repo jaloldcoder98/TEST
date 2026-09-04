@@ -15,6 +15,12 @@ import { Card, CardTitle, CardDescription } from "@/components/ui/card";
 import { LanguageSwitcher } from "@/components/landing/language-switcher";
 import type { Locale } from "@/i18n";
 
+// There is no account to create on the web (docs/DECISIONS.md D-10), so the landing page's job
+// is to send people to the bot. Without the username configured it says so in words rather than
+// rendering a link to nowhere (D-21).
+const BOT_USERNAME = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME;
+const BOT_URL = BOT_USERNAME ? `https://t.me/${BOT_USERNAME}` : null;
+
 const FEATURE_ICONS = [Dumbbell, Bot, ClipboardList, Apple, LineChart, Send] as const;
 const FEATURE_KEYS = [
   "exercises",
@@ -64,9 +70,11 @@ export default async function LandingPage({
         </nav>
         <div className="flex items-center gap-3">
           <LanguageSwitcher current={locale} />
-          <Button asChild size="sm" variant="secondary" className="hidden sm:inline-flex">
-            <Link href={`/${locale}/login`}>{nav("login")}</Link>
-          </Button>
+          {BOT_URL ? (
+            <Button asChild size="sm" variant="secondary" className="hidden sm:inline-flex">
+              <a href={BOT_URL}>{t("openInTelegram")}</a>
+            </Button>
+          ) : null}
         </div>
       </header>
 
@@ -82,12 +90,16 @@ export default async function LandingPage({
             {t("heroLead")}
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href={`/${locale}/register`}>
-                {t("cta1")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            {BOT_URL ? (
+              <Button asChild size="lg">
+                <a href={BOT_URL}>
+                  {t("openInTelegram")}
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t("telegramOnly")}</p>
+            )}
             <Button asChild size="lg" variant="secondary">
               <Link href={`/${locale}/ai-coach`}>{t("cta2")}</Link>
             </Button>

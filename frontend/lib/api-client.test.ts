@@ -9,8 +9,11 @@ function jsonResponse(status: number, body: unknown): Response {
 
 describe("api client", () => {
   beforeEach(() => {
-    useAuthStore.setState({ accessToken: "old-access", refreshToken: "old-refresh", user: null });
+    useAuthStore.setState({ accessToken: "old-access", csrfToken: "old-csrf", user: null });
     vi.stubGlobal("fetch", vi.fn());
+    // No Telegram SDK by default: these tests exercise the cookie-refresh path. The silent
+    // re-auth fallback gets its own test below, where the SDK is stubbed in.
+    vi.stubGlobal("Telegram", undefined);
   });
 
   afterEach(() => {
@@ -47,10 +50,10 @@ describe("api client", () => {
     await expect(api.get("/workouts/missing")).rejects.toBeInstanceOf(ApiError);
   });
 
-  it("on a 401, refreshes the access token once and retries the original request", async () => {
+  it("on a 401, refreshes with the cookie once and retries the original request", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(jsonResponse(401, { success: false, error: { code: "UNAUTHORIZED", message: "Expired" } }))
-      .mockResolvedValueOnce(jsonResponse(200, { access_token: "new-access", refresh_token: "new-refresh" }))
+      .mockResolvedValueOnce(jsonResponse(200, { access_token: "new-access", csrf_token: "new-csrf" }))
       .mockResolvedValueOnce(jsonResponse(200, { items: [] }));
 
     const result = await api.get<{ items: unknown[] }>("/workouts");
@@ -62,15 +65,41 @@ describe("api client", () => {
     // The retried request used the newly rotated token, not the stale one.
     const retryCall = vi.mocked(fetch).mock.calls[2];
     expect(retryCall[1]?.headers).toMatchObject({ Authorization: "Bearer new-access" });
+
+    // The refresh call carried the double-submit CSRF header and the cookie (D-19).
+    const refreshCall = vi.mocked(fetch).mock.calls[1];
+    expect(refreshCall[1]?.headers).toMatchObject({ "X-CSRF-Token": "old-csrf" });
+    expect(refreshCall[1]?.credentials).toBe("include");
   });
 
-  it("logs the user out when the refresh token itself is rejected", async () => {
+  it("falls back to silent re-auth with initData when the cookie refresh fails", async () => {
+    // Invariant 16: on Telegram Web/Safari the cookie may never have been stored at all, so a
+    // failed refresh must not mean a signed-out user while Telegram can still vouch for them.
+    vi.stubGlobal("Telegram", { WebApp: { initData: "signed-init-data" } });
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse(401, { success: false, error: { code: "UNAUTHORIZED", message: "Expired" } }))
+      .mockResolvedValueOnce(jsonResponse(401, { success: false, error: { code: "UNAUTHORIZED", message: "No session" } }))
+      .mockResolvedValueOnce(jsonResponse(200, { access_token: "reauth-access", csrf_token: "reauth-csrf" }))
+      .mockResolvedValueOnce(jsonResponse(200, { items: [] }));
+
+    const result = await api.get<{ items: unknown[] }>("/workouts");
+
+    expect(result).toEqual({ items: [] });
+    expect(useAuthStore.getState().accessToken).toBe("reauth-access");
+    const reauthCall = vi.mocked(fetch).mock.calls[2];
+    expect(String(reauthCall[0])).toContain("/auth/telegram-webapp");
+    expect(reauthCall[1]?.body).toBe(JSON.stringify({ init_data: "signed-init-data" }));
+  });
+
+  it("only signs the user out when both recovery paths fail", async () => {
+    // Outside Telegram there is no initData to fall back on, so a rejected cookie really is the
+    // end of the session.
     vi.mocked(fetch)
       .mockResolvedValueOnce(jsonResponse(401, { success: false, error: { code: "UNAUTHORIZED", message: "Expired" } }))
       .mockResolvedValueOnce(jsonResponse(401, { success: false, error: { code: "UNAUTHORIZED", message: "Bad refresh" } }));
 
     await expect(api.get("/workouts")).rejects.toBeInstanceOf(ApiError);
     expect(useAuthStore.getState().accessToken).toBeNull();
-    expect(useAuthStore.getState().refreshToken).toBeNull();
+    expect(useAuthStore.getState().csrfToken).toBeNull();
   });
 });

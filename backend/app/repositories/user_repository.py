@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import User, UserProfile
+from app.models import TelegramUser, User, UserProfile
 
 
 class UserRepository:
@@ -23,6 +23,15 @@ class UserRepository:
 
     async def get_by_email(self, email: str) -> User | None:
         result = await self.db.execute(select(User).where(User.email == email))
+        return result.scalar_one_or_none()
+
+    async def get_by_telegram_id(self, telegram_id: int) -> User | None:
+        result = await self.db.execute(
+            select(User)
+            .join(TelegramUser, TelegramUser.user_id == User.id)
+            .options(selectinload(User.profile))
+            .where(TelegramUser.telegram_id == telegram_id)
+        )
         return result.scalar_one_or_none()
 
     async def create(self, **kwargs) -> User:

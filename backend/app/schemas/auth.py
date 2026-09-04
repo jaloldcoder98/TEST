@@ -1,26 +1,13 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 from app.models.enums import Language
 
 
-class RegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=64)
-    password: str = Field(min_length=8, max_length=128)
-    email: EmailStr | None = None
-    first_name: str | None = None
-    last_name: str | None = None
-    language: Language = Language.UZ
-
-
-class LoginRequest(BaseModel):
-    username: str
-    password: str
-
-
 class TelegramAuthRequest(BaseModel):
-    """POST /auth/telegram — frictionless Telegram-side auth (spec.md §30: one account works on
-    both web and the bot). If `telegram_id` is already linked, this just re-issues tokens for
-    that account; otherwise it auto-creates a bot-only account (no password) bound to it.
+    """POST /auth/telegram — the bot's door.
+
+    Carries no signature, so the route requires the shared secret header instead (D-20). Idempotent
+    per `telegram_id`: an already-linked id signs in, an unknown one is provisioned.
     """
 
     telegram_id: int
@@ -31,20 +18,27 @@ class TelegramAuthRequest(BaseModel):
 
 
 class TelegramWebAppAuthRequest(BaseModel):
-    """POST /auth/telegram-webapp — auth entry point for the Telegram Mini App. `init_data` is
-    the raw `Telegram.WebApp.initData` string the frontend reads from the Telegram client; the
-    server verifies its signature (app/core/telegram_webapp.py) before trusting anything in it,
-    since — unlike the bot calling /auth/telegram directly — this arrives from client-side JS.
-    """
+    """POST /auth/telegram-webapp — the Mini App's door. `init_data` is the raw
+    `Telegram.WebApp.initData` string; its signature is verified against the bot token before
+    anything inside it is trusted (app/core/telegram_webapp.py)."""
 
     init_data: str = Field(min_length=1)
 
 
-class RefreshRequest(BaseModel):
-    refresh_token: str
+class SessionResponse(BaseModel):
+    """What a browser gets. No refresh token: it goes out as an httpOnly cookie the page cannot
+    read (D-12, D-13). `csrf_token` is held in memory and echoed in `X-CSRF-Token` on refresh."""
+
+    access_token: str
+    csrf_token: str
+    token_type: str = "bearer"
 
 
-class TokenResponse(BaseModel):
+class BotSessionResponse(BaseModel):
+    """What the bot gets. It has no cookie jar, so the refresh token comes in the body and the
+    bot stores it itself — acceptable because the bot is a trusted server-side process, not a
+    browser exposed to XSS."""
+
     access_token: str
     refresh_token: str
     token_type: str = "bearer"

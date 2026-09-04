@@ -50,7 +50,7 @@ For local testing, the simplest way to get one is a tunnel:
 ```bash
 ngrok http 3000            # prints a https://*.ngrok-free.app URL
 # set FRONTEND_URL to that URL in .env, then:
-docker compose restart telegram-bot
+docker compose up -d --build telegram-bot   # restart emas: bot kodi/env image ichida
 ```
 
 Only the frontend's port needs tunneling — its Next.js server proxies `/api/v1/*` to the backend

@@ -7,31 +7,21 @@ import { FullPageSpinner } from "@/components/ui/spinner";
 import { telegramWebAppLogin } from "@/lib/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth-store";
 
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        initData: string;
-        ready: () => void;
-        expand: () => void;
-        colorScheme?: "light" | "dark";
-      };
-    };
-  }
-}
-
-/** Mounted once, above routing (see lib/providers.tsx), so the rest of the app never renders
- * before we've decided whether this page was opened inside Telegram as a Mini App.
+/**
+ * Mounted above routing (see lib/providers.tsx), so nothing renders before we know whether this
+ * page is running inside Telegram.
  *
- * If it was: silently exchange `Telegram.WebApp.initData` for a session (see
- * app/core/telegram_webapp.py on the backend for how that's verified) before anything else
- * renders — this is what makes "/start -> tap Open App -> straight into the dashboard,
- * already signed in" work, with no login form and no language-picker step. If a session already
- * exists (a returning user reopening the Mini App), this is a no-op past the redirect.
+ * Inside Telegram this is the *only* way a session begins (docs/DECISIONS.md D-10): exchange the
+ * `initData` string the client hands us for a session, then go straight to the dashboard. There
+ * is no login form to fall back to, because there is no password to type.
  *
- * If it wasn't (a normal browser tab): `window.Telegram` doesn't exist, so this resolves
- * immediately and the regular site (landing page, manual login, etc.) renders exactly as before —
- * this component changes nothing for the existing web app. */
+ * Session state lives only in memory (D-12), so this runs on every cold open — which is exactly
+ * the design: the refresh cookie is an optimisation for warm reloads, and re-authenticating from
+ * `initData` is the reliable path that works even where the cookie is blocked (D-15, invariant 16).
+ *
+ * Outside Telegram, `window.Telegram` does not exist and the app renders the "open in Telegram"
+ * page instead (D-21).
+ */
 export function TelegramWebAppGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -43,9 +33,8 @@ export function TelegramWebAppGate({ children }: { children: React.ReactNode }) 
     let cancelled = false;
 
     async function run() {
-      const tg = window.Telegram?.WebApp;
+      const tg = typeof window !== "undefined" ? window.Telegram?.WebApp : undefined;
       if (!tg || !tg.initData) {
-        // Not inside Telegram — nothing to do, render the site as usual.
         if (!cancelled) setReady(true);
         return;
       }
@@ -57,16 +46,13 @@ export function TelegramWebAppGate({ children }: { children: React.ReactNode }) 
         try {
           await telegramWebAppLogin(tg.initData);
         } catch {
-          // Fall through and render the normal (signed-out) app — the user can still fall back
-          // to a manual login/register if, for some reason, Telegram auth didn't work.
+          // Render the signed-out app rather than a dead spinner; the API client will retry the
+          // same exchange on the next 401 (see recoverSession in lib/api-client.ts).
         }
       }
 
-      // Send them straight into the dashboard rather than the marketing landing page or a
-      // login form they'll never need inside the Mini App.
       const bare = pathname.replace(/^\/[a-z]{2}(?=\/|$)/, "");
-      const isEntryRoute = bare === "" || bare === "/" || bare === "/login" || bare === "/register";
-      if (isEntryRoute && useAuthStore.getState().accessToken) {
+      if ((bare === "" || bare === "/") && useAuthStore.getState().accessToken) {
         router.replace(`/${locale}/dashboard`);
       }
 
@@ -77,8 +63,7 @@ export function TelegramWebAppGate({ children }: { children: React.ReactNode }) 
     return () => {
       cancelled = true;
     };
-    // Only ever needs to run once, on mount — re-running on every pathname change would fight
-    // the very redirect it just performed.
+    // Once, on mount: re-running on every pathname change would fight the redirect it just made.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

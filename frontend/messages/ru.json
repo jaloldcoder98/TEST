@@ -4,7 +4,6 @@
     "workouts": "Тренировки",
     "nutrition": "Питание",
     "aiCoach": "AI Тренер",
-    "login": "Войти",
     "start": "Начать",
     "dashboard": "Главная",
     "progress": "Прогресс",
@@ -29,7 +28,9 @@
       "progressBody": "Вес, замеры тела и силовые показатели — на графиках.",
       "telegramTitle": "Интеграция с Telegram",
       "telegramBody": "Один аккаунт — работает и на сайте, и в Telegram-боте."
-    }
+    },
+    "openInTelegram": "Открыть в Telegram",
+    "telegramOnly": "Приложение работает внутри Telegram — откройте бота, чтобы войти."
   },
   "common": {
     "save": "Сохранить",

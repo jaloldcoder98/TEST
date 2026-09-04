@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Telegram WebView diagnostikasi — 0-bosqich</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root { color-scheme: light dark; --bg:#0f1115; --fg:#e8eaed; --mut:#9aa0a6; --line:#2a2f38;
+          --ok:#34a853; --bad:#ea4335; --warn:#fbbc04; --card:#171a21; --accent:#2f6feb; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#fff; --fg:#1a1d21; --mut:#5f6368; --line:#e0e3e7; --card:#f7f8fa; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; padding:16px 14px 56px; background:var(--bg); color:var(--fg);
+         font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  h1 { font-size:17px; margin:0 0 4px; }
+  p.sub { color:var(--mut); margin:0 0 16px; font-size:13px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px;
+          padding:12px; margin-bottom:12px; }
+  .card h2 { font-size:12px; margin:0 0 8px; text-transform:uppercase; letter-spacing:.05em;
+             color:var(--mut); font-weight:600; }
+  button { width:100%; padding:13px; margin:5px 0; border:0; border-radius:8px;
+           background:var(--accent); color:#fff; font-size:15px; font-weight:600; cursor:pointer; }
+  button.sec { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  button:disabled { opacity:.5; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:6px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  td:first-child { color:var(--mut); padding-right:10px; }
+  td:last-child { text-align:right; word-break:break-word; font-variant-numeric:tabular-nums; }
+  tr.head td { color:var(--fg); font-weight:700; border-bottom:0; padding-top:12px; font-size:12px;
+               text-transform:uppercase; letter-spacing:.05em; }
+  .ok { color:var(--ok); font-weight:600; } .bad { color:var(--bad); font-weight:600; }
+  .warn { color:var(--warn); font-weight:600; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px;
+        font-size:11px; overflow:auto; max-height:240px; margin:0; }
+  ol { margin:0; padding-left:20px; color:var(--mut); font-size:13px; }
+  ol b { color:var(--fg); }
+  .verdict { padding:10px 12px; border-radius:8px; border:1px solid var(--line);
+             margin-bottom:12px; font-size:13px; }
+</style>
+</head>
+<body>
+
+<h1>Telegram WebView diagnostikasi</h1>
+<p class="sub">0-bosqich · D-13, D-15, D-16, D-17, D-19 ni empirik tekshirish.
+Bu sahifa hech kimni tizimga kiritmaydi, token bermaydi va akkaunt yaratmaydi.</p>
+
+<div class="card">
+  <h2>Tartib</h2>
+  <ol>
+    <li><b>1-tugma</b> — asosiy tekshiruv.</li>
+    <li>Mini App'ni <b>butunlay yoping</b> (orqaga emas — yoping, chatdan ham chiqing).</li>
+    <li>Qaytadan oching → <b>2-tugma</b> — cookie omon qoldimi, <code>initData</code> yangilandimi.</li>
+    <li><b>3-tugma</b> — cookie o'chiriladi va silent re-auth tekshiriladi.</li>
+    <li><b>4-tugma</b> — natijani nusxalab yuboring.</li>
+  </ol>
+</div>
+
+<div id="verdict" class="verdict" style="color:var(--mut)">Xulosa 1-tugmadan keyin chiqadi.</div>
+
+<div class="card"><h2>Muhit</h2><table id="env"></table></div>
+
+<button id="run">1 · Asosiy tekshiruv</button>
+<button id="recheck" class="sec">2 · Qayta ochgandan keyin</button>
+<button id="reauth" class="sec">3 · Silent re-auth testi</button>
+<button id="copy" class="sec">4 · Natijani nusxalash</button>
+
+<div class="card"><h2>Natijalar</h2>
+  <table id="results"><tr><td colspan="2" style="color:var(--mut)">Hali ishga tushirilmadi.</td></tr></table>
+</div>
+
+<div class="card"><h2>To'liq JSON</h2><pre id="raw">{}</pre></div>
+
+<script>
+(function () {
+  var tg = (window.Telegram && window.Telegram.WebApp) || null;
+  if (tg) { try { tg.ready(); tg.expand(); } catch (e) {} }
+
+  var PREV_KEY = 'gym_diag_prev_initdata';
+
+  var report = {
+    generated_at: new Date().toISOString(),
+    page_origin: location.origin,
+    is_top_level: window.top === window.self,
+    telegram: tg ? {
+      platform: tg.platform, version: tg.version, color_scheme: tg.colorScheme,
+      has_init_data: !!tg.initData, init_data_length: tg.initData ? tg.initData.length : 0
+    } : null,
+    user_agent: navigator.userAgent,
+    steps: {}
+  };
+
+  function el(id) { return document.getElementById(id); }
+  function mark(v) {
+    if (v === true) return '<span class="ok">HA</span>';
+    if (v === false) return '<span class="bad">YO\'Q</span>';
+    if (v === null || v === undefined) return '<span class="warn">—</span>';
+    return String(v);
+  }
+  function dump() { el('raw').textContent = JSON.stringify(report, null, 2); }
+
+  /** Short, stable fingerprint of an initData string. Lets us tell "Telegram handed us a fresh
+   * payload" from "Telegram handed us the identical one again" across app restarts without ever
+   * storing the payload itself. */
+  function fingerprint(text) {
+    if (!window.crypto || !crypto.subtle) return Promise.resolve(null);
+    return crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)).then(function (buf) {
+      return Array.prototype.map.call(new Uint8Array(buf).slice(0, 6),
+        function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+    }).catch(function () { return null; });
+  }
+  function store(key, value) { try { localStorage.setItem(key, value); return true; } catch (e) { return false; } }
+  function load(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+
+  function api(path, opts) {
+    opts = opts || {};
+    // credentials:'include' is the whole point — without it the browser would never attach the
+    // cookie in a cross-site iframe and the test would prove nothing.
+    opts.credentials = 'include';
+    opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+    return fetch('/api/v1/_diag' + path, opts)
+      .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+      .catch(function (e) { return { status: 0, body: { error: String(e) } }; });
+  }
+
+  rowsEnv();
+  function rowsEnv() {
+    el('env').innerHTML = [
+      ['Telegram SDK', !!tg], ['Platforma', tg ? tg.platform : '—'],
+      ['SDK versiyasi', tg ? tg.version : '—'],
+      ['Top-level hujjat (iframe emas)', report.is_top_level],
+      ['initData mavjud', tg ? !!tg.initData : false], ['Origin', location.origin]
+    ].map(function (p) { return '<tr><td>' + p[0] + '</td><td>' + mark(p[1]) + '</td></tr>'; }).join('');
+    dump();
+  }
+
+  function render() {
+    var s = report.steps;
+    var get = (s.read_immediately && s.read_immediately.body) || {};
+    var idr = (s.init_data && s.init_data.body) || {};
+    var post = idr.observed || {};
+    var re = s.reopen || {};
+    var sr = s.silent_reauth || {};
+
+    var pairs = [
+      ['head', 'Cookie'],
+      ['1 · Set-Cookie qabul qilindi', s.set_cookie ? !!s.set_cookie.body.set_cookie_sent : null],
+      ['2 · Atributlar (server yuborgan)', s.set_cookie ? (s.set_cookie.body.cookie_attributes || '—') : '—'],
+      ['2 · Secure / SameSite=None / Partitioned saqlanib qaytdi', s.attributes_survived],
+      ['   Darhol qaytdi', s.read_immediately ? !!get.cookie_returned : null],
+      ['3 · Qayta ochgandan keyin qaytdi', re.cookie_returned === undefined ? null : !!re.cookie_returned],
+      ['   httpOnly JS\'dan yashirdi', s.document_cookie_hidden],
+      ['head', 'initData'],
+      ['4 · Mavjud', tg ? !!tg.initData : false],
+      ['   Imzo to\'g\'ri', idr.checked ? !!idr.signature_valid : null],
+      ['5 · Qayta ochilganda payload o\'zgardi', re.init_data_changed === undefined ? null : re.init_data_changed],
+      ['   Fingerprint (oldingi → yangi)', re.prev_fingerprint ? (re.prev_fingerprint + ' → ' + re.new_fingerprint) : (s.fingerprint || '—')],
+      ['6 · auth_date', idr.auth_date || '—'],
+      ['   Yoshi (soniya)', idr.age_seconds === undefined ? '—' : idr.age_seconds],
+      ['   300s oynasida', idr.checked ? !!idr.within_300s_window : null],
+      ['   Bir xil payload qayta qabul qilindi (D-17)', s.init_data_replay === undefined ? null : s.init_data_replay],
+      ['head', 'Headerlar'],
+      ['7 · Origin — POST so\'rovda', post.origin ? true : false],
+      ['   Origin qiymati', post.origin || '—'],
+      ['8 · Referer', post.referer ? true : false],
+      ['   Sec-Fetch-Site', post.sec_fetch_site || '—'],
+      ['head', 'Silent re-auth'],
+      ['9 · Cookie o\'chirilgach yo\'qoldi', sr.cookie_gone === undefined ? null : sr.cookie_gone],
+      ['   Cookie yo\'q holatda initData ishladi', sr.init_data_ok === undefined ? null : sr.init_data_ok]
+    ];
+
+    el('results').innerHTML = pairs.map(function (p) {
+      if (p[0] === 'head') return '<tr class="head"><td colspan="2">' + p[1] + '</td></tr>';
+      return '<tr><td>' + p[0] + '</td><td>' + mark(p[1]) + '</td></tr>';
+    }).join('');
+
+    // Item 10: the practical read on this specific native WebView.
+    var v = [];
+    if (s.read_immediately) v.push(get.cookie_returned ? 'Cookie ishlaydi' : 'Cookie ISHLAMAYDI');
+    if (re.cookie_returned !== undefined) v.push(re.cookie_returned ? 'qayta ochilganda saqlandi' : 'qayta ochilganda YO\'QOLDI');
+    if (sr.init_data_ok !== undefined) v.push(sr.init_data_ok ? 'silent re-auth ishlaydi' : 'silent re-auth ISHLAMAYDI');
+    report.verdict = v.length ? ((tg ? tg.platform : 'noma\'lum') + ': ' + v.join(' · ')) : null;
+    if (report.verdict) {
+      var bad = /ISHLAMAYDI|YO'QOLDI/.test(report.verdict);
+      el('verdict').innerHTML = '<b>' + (bad ? '<span class="bad">DIQQAT</span>' : '<span class="ok">XULOSA</span>')
+        + '</b> ' + report.verdict;
+    }
+    dump();
+  }
+
+  el('run').onclick = function () {
+    var b = this; b.disabled = true; b.textContent = 'Tekshirilmoqda…';
+    api('/env').then(function (r) {
+      report.steps.env = r;
+      return api('/cookie', { method: 'POST', body: '{}' });
+    }).then(function (r) {
+      report.steps.set_cookie = r;
+      var attrs = (r.body && r.body.cookie_attributes) || '';
+      report.steps.attributes_survived = ['Secure', 'SameSite=None', 'Partitioned']
+        .every(function (a) { return attrs.indexOf(a) !== -1; });
+      // httpOnly means script must NOT see it. Visible here would be a finding, not a detail.
+      report.steps.document_cookie_hidden = document.cookie.indexOf('gym_diag') === -1;
+      return api('/cookie');
+    }).then(function (r) {
+      report.steps.read_immediately = r;
+      if (!tg || !tg.initData) { report.steps.init_data = { body: { checked: false, reason: 'initData yo\'q' } }; return null; }
+      return api('/initdata', { method: 'POST', body: JSON.stringify({ init_data: tg.initData }) });
+    }).then(function (r) {
+      if (r) report.steps.init_data = r;
+      if (!tg || !tg.initData) return null;
+      // D-17: the SAME payload, sent again, must still verify. A false here would mean a
+      // one-time-nonce rule crept in and legitimate reloads are broken.
+      return api('/initdata', { method: 'POST', body: JSON.stringify({ init_data: tg.initData }) });
+    }).then(function (r) {
+      if (r) report.steps.init_data_replay = !!(r.body && r.body.signature_valid);
+      return tg && tg.initData ? fingerprint(tg.initData) : null;
+    }).then(function (fp) {
+      if (fp) {
+        report.steps.fingerprint = fp;
+        // Remembered so step 2 can tell a fresh payload from an identical one after a restart.
+        report.steps.fingerprint_stored = store(PREV_KEY, JSON.stringify({
+          fp: fp, auth_date: (report.steps.init_data && report.steps.init_data.body.auth_date) || null
+        }));
+      }
+      render();
+      b.textContent = '1 · Qayta ishga tushirish'; b.disabled = false;
+    });
+  };
+
+  el('recheck').onclick = function () {
+    var b = this; b.disabled = true; b.textContent = 'Tekshirilmoqda…';
+    var out = {};
+    api('/cookie').then(function (r) {
+      out.cookie_returned = !!(r.body && r.body.cookie_returned);
+      out.raw_cookie_check = r;
+      return tg && tg.initData ? fingerprint(tg.initData) : null;
+    }).then(function (fp) {
+      var prev = null;
+      try { prev = JSON.parse(load(PREV_KEY) || 'null'); } catch (e) { prev = null; }
+      out.new_fingerprint = fp;
+      out.prev_fingerprint = prev && prev.fp;
+      out.prev_auth_date = prev && prev.auth_date;
+      // If localStorage was also wiped we cannot compare — say so rather than guessing.
+      out.init_data_changed = (fp && prev && prev.fp) ? (fp !== prev.fp) : null;
+      if (!tg || !tg.initData) return null;
+      return api('/initdata', { method: 'POST', body: JSON.stringify({ init_data: tg.initData }) });
+    }).then(function (r) {
+      if (r) { out.init_data_after_reopen = r.body; report.steps.init_data = r; }
+      out.checked_at = new Date().toISOString();
+      report.steps.reopen = out;
+      render();
+      b.textContent = '2 · Qayta tekshirish'; b.disabled = false;
+    });
+  };
+
+  el('reauth').onclick = function () {
+    var b = this; b.disabled = true; b.textContent = 'Tekshirilmoqda…';
+    var out = {};
+    // Deliberately destroys the cookie — that is the point: prove the app can still get a
+    // session from initData alone (D-15, invariant 16). Run this AFTER step 2.
+    api('/cookie', { method: 'DELETE' }).then(function () { return api('/cookie'); })
+      .then(function (r) {
+        out.cookie_gone = !(r.body && r.body.cookie_returned);
+        if (!tg || !tg.initData) return null;
+        return api('/initdata', { method: 'POST', body: JSON.stringify({ init_data: tg.initData }) });
+      }).then(function (r) {
+        out.init_data_ok = !!(r && r.body && r.body.signature_valid);
+        out.init_data_within_window = !!(r && r.body && r.body.within_300s_window);
+        report.steps.silent_reauth = out;
+        render();
+        b.textContent = '3 · Qayta tekshirish'; b.disabled = false;
+      });
+  };
+
+  el('copy').onclick = function () {
+    var text = JSON.stringify(report, null, 2);
+    var done = function () { el('copy').textContent = '4 · Nusxalandi ✓'; };
+    if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done, done); }
+    else { var t = document.createElement('textarea'); t.value = text; document.body.appendChild(t);
+           t.select(); try { document.execCommand('copy'); } catch (e) {} t.remove(); done(); }
+  };
+})();
+</script>
+</body>
+</html>

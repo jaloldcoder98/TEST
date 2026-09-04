@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import BotCommand, MenuButtonCommands, MenuButtonWebApp, WebAppInfo
 
 from config import settings
-from handlers import ai_coach, common, exercises, help as help_handler, link, nutrition, profile, progress, start, workouts
+from handlers import ai_coach, common, diag, exercises, help as help_handler, link, nutrition, profile, progress, start, workouts
 from services.api_client import backend
 
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +20,8 @@ BOT_COMMANDS = [
     BotCommand(command="logweight", description="Log today's weight"),
     BotCommand(command="cancel", description="Cancel the current action"),
     BotCommand(command="help", description="Show available commands"),
+    # Phase 0 only — removed with the rest of the WebView diagnostics harness.
+    BotCommand(command="diag", description="Telegram WebView diagnostics (Phase 0)"),
 ]
 
 
@@ -30,7 +32,7 @@ async def main() -> None:
     # Order matters where callback_data/state filters could otherwise be ambiguous (e.g. two
     # routers both matching a "lang:" prefix) — see the comment in handlers/profile.py, which
     # sidesteps that by using a distinct "setlang:" prefix instead of relying on router order.
-    for router in (start.router, link.router, common.router, workouts.router, exercises.router, nutrition.router, progress.router, profile.router, ai_coach.router, help_handler.router):
+    for router in (start.router, link.router, common.router, workouts.router, exercises.router, nutrition.router, progress.router, profile.router, ai_coach.router, help_handler.router, diag.router):
         dp.include_router(router)
 
     await bot.set_my_commands(BOT_COMMANDS)

@@ -7,12 +7,20 @@ import app.services.ai_service as ai_service
 from app.ai.providers.base import AIProvider
 from app.schemas.ai import AIFoodAnalysisResult, AIGeneratedWorkout, AIWorkoutExercisePick
 
+from tests.conftest import make_init_data, new_telegram_id
+
 
 @pytest.fixture(scope="module")
 def auth_headers(client):
-    username = f"aitest_{uuid.uuid4().hex[:12]}"
-    response = client.post("/api/v1/auth/register", json={"username": username, "password": "password123"})
+    """A signed-in user. Telegram is the only door now (D-10), so tests come in
+    through it too — a fixture that authenticated some other way would be testing a
+    path the product does not have."""
+    response = client.post(
+        "/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}
+    )
+    assert response.status_code == 200, response.text
     token = response.json()["access_token"]
+    client.cookies.clear()
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -117,8 +125,8 @@ def test_chat_rejects_another_users_conversation_id(client, monkeypatch) -> None
 
     user_a = f"aiconv_a_{uuid.uuid4().hex[:8]}"
     user_b = f"aiconv_b_{uuid.uuid4().hex[:8]}"
-    token_a = client.post("/api/v1/auth/register", json={"username": user_a, "password": "password123"}).json()["access_token"]
-    token_b = client.post("/api/v1/auth/register", json={"username": user_b, "password": "password123"}).json()["access_token"]
+    token_a = client.post("/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}).json()["access_token"]
+    token_b = client.post("/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}).json()["access_token"]
 
     started = client.post("/api/v1/ai/chat", json={"message": "hi"}, headers={"Authorization": f"Bearer {token_a}"})
     conversation_id = started.json()["conversation_id"]

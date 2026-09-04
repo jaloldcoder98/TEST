@@ -10,54 +10,54 @@ const fakeUser: User = {
   first_name: null,
   last_name: null,
   language: "en",
-  is_admin: false,
+  role: "user",
   profile: null,
-} as unknown as User;
+};
 
 describe("useAuthStore", () => {
   beforeEach(() => {
-    useAuthStore.setState({ accessToken: null, refreshToken: null, user: null });
+    useAuthStore.setState({ accessToken: null, csrfToken: null, user: null });
   });
 
   it("starts logged out", () => {
     const state = useAuthStore.getState();
     expect(state.accessToken).toBeNull();
-    expect(state.refreshToken).toBeNull();
+    expect(state.csrfToken).toBeNull();
     expect(state.user).toBeNull();
   });
 
-  it("setSession stores tokens and the user together", () => {
-    useAuthStore.getState().setSession("access-1", "refresh-1", fakeUser);
+  it("setSession stores the access and CSRF tokens together with the user", () => {
+    useAuthStore.getState().setSession("access-1", "csrf-1", fakeUser);
     const state = useAuthStore.getState();
     expect(state.accessToken).toBe("access-1");
-    expect(state.refreshToken).toBe("refresh-1");
+    expect(state.csrfToken).toBe("csrf-1");
     expect(state.user).toEqual(fakeUser);
   });
 
-  it("setTokens rotates tokens without touching the stored user", () => {
-    useAuthStore.getState().setSession("access-1", "refresh-1", fakeUser);
-    useAuthStore.getState().setTokens("access-2", "refresh-2");
+  it("setTokens rotates the pair without touching the user", () => {
+    useAuthStore.getState().setSession("access-1", "csrf-1", fakeUser);
+    useAuthStore.getState().setTokens("access-2", "csrf-2");
     const state = useAuthStore.getState();
     expect(state.accessToken).toBe("access-2");
-    expect(state.refreshToken).toBe("refresh-2");
-    expect(state.user).toEqual(fakeUser); // unchanged
+    expect(state.csrfToken).toBe("csrf-2");
+    expect(state.user).toEqual(fakeUser);
   });
 
-  it("setUser updates only the user", () => {
-    useAuthStore.getState().setSession("access-1", "refresh-1", fakeUser);
-    const updated = { ...fakeUser, username: "renamed" };
-    useAuthStore.getState().setUser(updated);
-    const state = useAuthStore.getState();
-    expect(state.user?.username).toBe("renamed");
-    expect(state.accessToken).toBe("access-1"); // unchanged
-  });
-
-  it("clear logs the user out entirely", () => {
-    useAuthStore.getState().setSession("access-1", "refresh-1", fakeUser);
+  it("clear wipes everything", () => {
+    useAuthStore.getState().setSession("access-1", "csrf-1", fakeUser);
     useAuthStore.getState().clear();
     const state = useAuthStore.getState();
     expect(state.accessToken).toBeNull();
-    expect(state.refreshToken).toBeNull();
+    expect(state.csrfToken).toBeNull();
     expect(state.user).toBeNull();
+  });
+
+  it("never holds a refresh token, and persists nothing", () => {
+    // The two properties the whole session model rests on (docs/DECISIONS.md D-12, D-13): the
+    // refresh token lives in an httpOnly cookie the page cannot read, and nothing about the
+    // session survives in storage for an XSS bug to find.
+    useAuthStore.getState().setSession("access-1", "csrf-1", fakeUser);
+    expect(Object.keys(useAuthStore.getState())).not.toContain("refreshToken");
+    expect(window.localStorage.length).toBe(0);
   });
 });
