@@ -35,6 +35,10 @@ class BackendClient:
         headers = kwargs.pop("headers", {}) or {}
         if token:
             headers["Authorization"] = f"Bearer {token}"
+        # Sent on every call rather than only the two that need it: it identifies the caller as
+        # this bot, and the endpoints that do not check it simply ignore it (D-20).
+        if settings.bot_shared_secret:
+            headers["X-Bot-Secret"] = settings.bot_shared_secret
         response = await self._client.request(method, path, headers=headers, **kwargs)
         if response.status_code >= 400:
             try:
@@ -68,19 +72,11 @@ class BackendClient:
             },
         )
 
-    async def login(self, username: str, password: str) -> dict:
-        return await self._request("POST", "/auth/login", json={"username": username, "password": password})
-
     async def refresh(self, refresh_token: str) -> dict:
-        return await self._request("POST", "/auth/refresh", json={"refresh_token": refresh_token})
+        """The bot's own rotation endpoint. `/auth/refresh` is the browser's and reads an httpOnly
+        cookie the bot does not have, so the token travels in the body here instead (D-13)."""
+        return await self._request("POST", "/auth/bot/refresh", json={"refresh_token": refresh_token})
 
-    async def link_telegram(self, token: str, telegram_id: int, chat_id: int, telegram_username: str | None) -> dict:
-        return await self._request(
-            "POST",
-            "/users/me/link-telegram",
-            token=token,
-            json={"telegram_id": telegram_id, "chat_id": chat_id, "telegram_username": telegram_username},
-        )
 
     # --- Users ------------------------------------------------------------------------------
 

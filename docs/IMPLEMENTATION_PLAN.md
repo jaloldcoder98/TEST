@@ -52,7 +52,7 @@ Hujjat kod bilan **bir commitda** o'zgaradi; kelajakdagi holat oldindan qo'lda y
 | # | Bosqich | Natija | Bloklovchi ochiq masala |
 |---|---|---|---|
 | 0 | Cookie/WebView test matritsasi | Auth 4 klientda isbotlangan | O-4 (test qurilmalari) |
-| 1 | Auth qayta qurish + rollar + bootstrap admin | Telegram-only kirish | — |
+| 1 | ✅ **BAJARILDI** — Auth qayta qurish + rollar + bootstrap admin | Telegram-only kirish | — |
 | 2 | Sxema poydevori | Yangi baseline DB | — |
 | 3 | Mashqlar API + admin CRUD + tarjima modeli | Katalog to'liq | — |
 | 4 | Dasturlar (template + clone + builder API) | Dastur mexanikasi | O-5 (dastur mazmuni) |
@@ -63,6 +63,12 @@ Hujjat kod bilan **bir commitda** o'zgaradi; kelajakdagi holat oldindan qo'lda y
 | 9 | Nutrition (food DB, porsiyalar, tarjimalar) | Ovqatlanish moduli | O-7 |
 | 10 | Xavfsizlik/maxfiylik audit + o'chirish/eksport | Prodga tayyorlik | O-1, O-2 |
 | 11 | Deploy, monitoring, zaxira | Ishga tushirish | O-2, O-3 |
+
+> **0-bosqich holati:** mahsulot egasi qarori bilan fizik qurilma o'lchovi **oxirga
+> qoldirildi** va 1-bosqich o'lchovsiz boshlandi. Bu xavfsiz, chunki eng qimmat xato — cookie'ga
+> to'liq tayanish — dizayn darajasida allaqachon oldi olingan (D-15, invariant 16): cookie
+> ishlamasa ilova `initData` bilan jimgina qayta autentifikatsiya qiladi. O'lchov 0-bosqich
+> harness'i bilan istalgan vaqtda bajariladi va faqat aniqlik qo'shadi.
 
 **Birinchi real foydalanuvchilar: 6-bosqichdan keyin** — closed beta, 10–30 kishi, monitoring va
 qo'lda qo'llab-quvvatlash bilan. Admin panel hali to'liq bo'lmasa, boshqaruv SQL orqali.
@@ -141,6 +147,28 @@ iOS uchun hujjatlashtirilgan taxmin va 6-bosqich betasida tekshirish.
 
 **Chiqish mezoni:** parol kodi va endpointlari butunlay yo'q; Mini App ochilganda foydalanuvchi
 hech qanday forma ko'rmay dashboardga tushadi; cookie yo'q holatda ham (Web) ishlaydi.
+
+### Bajarilgandan keyingi qaydlar
+
+Rejada ko'zda tutilmagan, lekin implementatsiya davomida zarur bo'lgan uchta narsa:
+
+1. **CSRF tokeni saqlanmaydi, hosil qilinadi.** `csrf_token_for(refresh_token)` — refresh
+   tokenning hashidan HMAC. Shu sababli qo'shimcha ustun ham, qidiruv ham kerak emas, va sessiya
+   bilan sinxronlashtiriladigan ikkinchi sir yo'q. Hujumchi uni hisoblab chiqara olmaydi, chunki
+   manba token httpOnly cookie ichida.
+2. **Botning refresh yo'li alohida:** `POST /auth/bot/refresh`. `/auth/refresh` cookie o'qiydi,
+   botda esa cookie yo'q — shuning uchun token tanada keladi va endpoint shared secret bilan
+   himoyalangan. Rotatsiya va reuse detection ikkalasida ham bir xil.
+3. **Migratsiya `NUMERIC` ga tegmadi** — u 2A ning ishi. 1-bosqich faqat auth uchun zarur sxema
+   o'zgarishini kiritdi (`role`, `family_id`, `replaced_by_id`, `revoked_reason`,
+   `password_hash` olib tashlash) va eski zanjir ustiga qo'yildi; D-100 dagi toza baseline
+   2-bosqichda bir marta yig'iladi.
+
+**Topilgan va tuzatilgan bug:** reuse aniqlanganda `revoke_family()` chaqirilib, keyin
+`UnauthorizedError` ko'tarilardi — `get_db` esa har qanday xatoda sessiyani rollback qiladi, ya'ni
+**bekor qilish yo'qolardi**: o'g'irlangan token aniqlanardi, javob 401 bo'lardi, lekin hech narsa
+haqiqatda bekor qilinmasdi. Endi revoke `commit` bilan yoziladi, keyin xato ko'tariladi.
+`tests/test_auth.py::test_reusing_a_rotated_token_kills_the_whole_family` shuni qoplaydi.
 
 ---
 

@@ -3,7 +3,7 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import ActivityLevel, ExperienceLevel, Gender, Goal, Language
+from app.models.enums import ActivityLevel, ExperienceLevel, Gender, Goal, Language, UserRole
 
 
 class UserProfileOut(BaseModel):
@@ -31,17 +31,10 @@ class UserOut(BaseModel):
     first_name: str | None
     last_name: str | None
     language: Language
+    # Sent so the client knows whether to render the admin entry point at all (D-110). It is a
+    # convenience, never a permission: every admin route re-checks the role server-side.
+    role: UserRole
     profile: UserProfileOut | None = None
-
-
-class TelegramLinkRequest(BaseModel):
-    """POST /users/me/link-telegram — attaches a Telegram account to the *currently
-    authenticated* user (after the bot has verified their username/password via POST
-    /auth/login), so a user who registered on the web can use the same account in the bot."""
-
-    telegram_id: int
-    chat_id: int
-    telegram_username: str | None = None
 
 
 class UserUpdateRequest(BaseModel):

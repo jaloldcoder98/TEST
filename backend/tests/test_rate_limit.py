@@ -7,6 +7,8 @@ nothing here leaks into other test files.
 
 from __future__ import annotations
 
+import asyncio
+
 from types import SimpleNamespace
 
 import pytest
@@ -134,11 +136,34 @@ async def test_fails_open_when_redis_is_unreachable(monkeypatch):
         await dependency(request)  # allowed through despite being well past the limit
 
 
-def test_login_endpoint_enforces_the_limit_end_to_end(client):
-    for _ in range(10):
-        response = client.post("/api/v1/auth/login", json={"username": "nobody", "password": "wrong"})
+async def _clear_rate_limit_keys(key: str) -> None:
+    from redis.asyncio import Redis
+
+    from app.core.config import get_settings
+
+    redis = Redis.from_url(get_settings().redis_url, decode_responses=True)
+    try:
+        async for found in redis.scan_iter(match=f"ratelimit:{key}:*"):
+            await redis.delete(found)
+    finally:
+        await redis.aclose()
+
+
+def test_auth_endpoint_enforces_the_limit_end_to_end(client):
+    """`/auth/telegram-webapp` replaced `/auth/login` as the limiter's end-to-end subject when
+    passwords were removed (D-10). Garbage init_data is used deliberately: the limiter must
+    apply before authentication succeeds, which is the only reason it protects anything.
+
+    The counter is cleared first because it lives in a real Redis with a 60-second window: two
+    runs of this suite inside one window would otherwise see the second run start pre-exhausted,
+    and fail for a reason that has nothing to do with the limiter.
+    """
+    asyncio.run(_clear_rate_limit_keys("telegram_webapp_auth"))
+    payload = {"init_data": "not-a-real-signed-payload"}
+    for _ in range(60):
+        response = client.post("/api/v1/auth/telegram-webapp", json=payload)
         assert response.status_code != 429
 
-    blocked = client.post("/api/v1/auth/login", json={"username": "nobody", "password": "wrong"})
+    blocked = client.post("/api/v1/auth/telegram-webapp", json=payload)
     assert blocked.status_code == 429
     assert blocked.json()["error"]["code"] == "RATE_LIMITED"

@@ -1,4 +1,6 @@
 STRINGS = {
+    "start.open_app": "🏋️ Ilovani ochish",
+    "link.already_connected": "Telegram akkauntingiz avtomatik bog'langan — alohida login va parol kerak emas. Barcha ma'lumotlaringiz shu akkauntda.",
     "welcome": "GYM AI Murabbiyingizga xush kelibsiz! Davom etish uchun tilni tanlang.",
     "welcome_back": "Xush kelibsiz, {name}!",
     "menu.workout": "🏋️ Mashg'ulot",

@@ -3,12 +3,20 @@ from datetime import date, timedelta
 
 import pytest
 
+from tests.conftest import make_init_data, new_telegram_id
+
 
 @pytest.fixture(scope="module")
 def auth_headers(client):
-    username = f"nutrtest_{uuid.uuid4().hex[:12]}"
-    response = client.post("/api/v1/auth/register", json={"username": username, "password": "password123"})
+    """A signed-in user. Telegram is the only door now (D-10), so tests come in
+    through it too — a fixture that authenticated some other way would be testing a
+    path the product does not have."""
+    response = client.post(
+        "/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}
+    )
+    assert response.status_code == 200, response.text
     token = response.json()["access_token"]
+    client.cookies.clear()
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -65,8 +73,7 @@ def test_nutrition_history_range(client, auth_headers) -> None:
 
 
 def test_calorie_target_produces_remaining_calories(client) -> None:
-    username = f"nutrtarget_{uuid.uuid4().hex[:10]}"
-    token = client.post("/api/v1/auth/register", json={"username": username, "password": "password123"}).json()["access_token"]
+    token = client.post("/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     response = client.patch("/api/v1/users/me", json={"daily_calorie_target": 2000}, headers=headers)

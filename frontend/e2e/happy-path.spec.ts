@@ -1,26 +1,50 @@
+import { createHmac } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 
-// One continuous user journey (docs/IMPLEMENTATION_PLAN.md Phase 8): register -> dashboard ->
-// exercises -> favorite -> create a workout -> start a session -> log a set -> finish -> log a
-// meal -> log today's weight. Run against the "en" locale so button/label text is stable to
-// assert on (see messages/en.json) — the same flow is exercised in every language by the unit
-// tests around next-intl message completeness, so this file's job is the end-to-end wiring, not
-// translation coverage.
+// One continuous user journey: open the Mini App -> dashboard -> exercises -> favorite -> create
+// a workout -> start a session -> log a set -> finish -> log a meal -> log today's weight. Run
+// against the "en" locale so button/label text is stable to assert on (see messages/en.json).
 //
-// Requires the backend and this frontend to already be running (npm run build && npm run start,
-// backend via uvicorn against a reachable Postgres) — see docs/DEVELOPMENT.md.
+// There is no web sign-up any more (docs/DECISIONS.md D-10), so the journey starts the way a real
+// one does: by injecting a Telegram Mini App SDK whose `initData` is signed with the bot token,
+// exactly as the Telegram client would hand it over. The app then authenticates itself through
+// its normal path — nothing about auth is stubbed, only the SDK that carries the identity.
+//
+// Requires the backend and this frontend to already be running, and TELEGRAM_BOT_TOKEN to match
+// the backend's, since the signature is verified server-side.
+
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 test.describe.configure({ mode: "serial" });
 
-const username = `e2e_${Date.now()}`;
-const password = "password123";
+test.skip(!BOT_TOKEN, "TELEGRAM_BOT_TOKEN must match the backend's to sign initData");
 
-test("register, log a workout session, a meal, and today's weight", async ({ page }) => {
-  // --- Register -----------------------------------------------------------------------------
-  await page.goto("/en/register");
-  await page.locator("#username").fill(username);
-  await page.locator("#password").fill(password);
-  await page.getByRole("button", { name: "Create account" }).click();
+function signedInitData(telegramId: number): string {
+  const fields: Record<string, string> = {
+    auth_date: String(Math.floor(Date.now() / 1000)),
+    query_id: "AAHdF6IQAAAAAN0XohDhrOrc",
+    user: JSON.stringify({ id: telegramId, first_name: "E2E", username: `e2e_${telegramId}` }),
+  };
+  const check = Object.keys(fields)
+    .sort()
+    .map((k) => `${k}=${fields[k]}`)
+    .join("\n");
+  const secret = createHmac("sha256", "WebAppData").update(BOT_TOKEN!).digest();
+  const hash = createHmac("sha256", secret).update(check).digest("hex");
+  return new URLSearchParams({ ...fields, hash }).toString();
+}
+
+test("open the Mini App, log a workout session, a meal, and today's weight", async ({ page }) => {
+  // --- Arrive as Telegram would deliver us ---------------------------------------------------
+  const initData = signedInitData(Date.now() % 1_000_000_000);
+  await page.addInitScript((data) => {
+    (window as unknown as { Telegram: unknown }).Telegram = {
+      WebApp: { initData: data, ready: () => {}, expand: () => {}, colorScheme: "dark" },
+    };
+  }, initData);
+
+  await page.goto("/en");
   await expect(page).toHaveURL(/\/en\/dashboard/, { timeout: 15_000 });
 
   // --- Exercises: favorite the first result --------------------------------------------------

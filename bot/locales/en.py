@@ -2,6 +2,8 @@
 in a handler (spec.md §21)."""
 
 STRINGS = {
+    "start.open_app": "🏋️ Open the app",
+    "link.already_connected": "Your Telegram account is linked automatically — no separate username or password. All your data lives in this account.",
     "welcome": "Welcome to your GYM AI Coach! Choose your language to continue.",
     "welcome_back": "Welcome back, {name}!",
     "menu.workout": "🏋️ Workout",

@@ -6,20 +6,22 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
-from app.models.enums import ActivityLevel, ExperienceLevel, Gender, Goal, Language
+from app.models.enums import ActivityLevel, ExperienceLevel, Gender, Goal, Language, UserRole
 
 
 class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     __tablename__ = "users"
 
+    # Kept nullable and unused: Telegram is the only identity (D-10), so nothing writes this
+    # today. It stays for a future notification/receipt address rather than being dropped and
+    # re-added later.
     email: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     username: Mapped[str] = mapped_column(String(64), unique=True)
-    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
     first_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     last_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     language: Mapped[Language] = mapped_column(Enum(Language, name="language"), default=Language.UZ)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), default=UserRole.USER)
 
     profile: Mapped["UserProfile"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
     telegram_account: Mapped["TelegramUser"] = relationship(back_populates="user", uselist=False, cascade="all, delete-orphan")
@@ -64,12 +66,30 @@ class TelegramUser(Base, UUIDPrimaryKeyMixin):
 
 
 class RefreshToken(Base, UUIDPrimaryKeyMixin):
+    """One row per issued refresh token, stored as a SHA-256 hash so a database dump yields
+    nothing replayable.
+
+    Tokens issued from one another form a *family* (D-14): logging in starts a family, and every
+    rotation adds a link to the same chain. That is what makes reuse detection possible — if a
+    token that has already been rotated away is presented again, the only explanations are a
+    stolen copy or a client bug, and in either case the safe move is to revoke the whole family
+    rather than the single token, since the thief and the victim now hold siblings of it.
+    """
+
     __tablename__ = "refresh_tokens"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    # Shared by every token descended from one login, so a breach revokes the chain, not a link.
+    family_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
+    # Set when this token is rotated: its presence is exactly what marks a token as "already
+    # used", which is the signal reuse detection keys off.
+    replaced_by_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Why it was revoked — "rotated", "logout", "reuse_detected", "account_deactivated". Kept
+    # because "the whole family died at 03:14" is only useful if you can tell which of those it was.
+    revoked_reason: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
 
 class Favorite(Base, UUIDPrimaryKeyMixin, TimestampMixin):

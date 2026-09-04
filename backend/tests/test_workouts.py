@@ -2,12 +2,20 @@ import uuid
 
 import pytest
 
+from tests.conftest import make_init_data, new_telegram_id
+
 
 @pytest.fixture(scope="module")
 def auth_headers(client):
-    username = f"wktest_{uuid.uuid4().hex[:12]}"
-    response = client.post("/api/v1/auth/register", json={"username": username, "password": "password123"})
+    """A signed-in user. Telegram is the only door now (D-10), so tests come in
+    through it too — a fixture that authenticated some other way would be testing a
+    path the product does not have."""
+    response = client.post(
+        "/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}
+    )
+    assert response.status_code == 200, response.text
     token = response.json()["access_token"]
+    client.cookies.clear()
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -95,8 +103,8 @@ def test_workout_crud_and_session_flow(client, auth_headers, bench_press_id) -> 
 def test_cannot_access_another_users_workout(client, bench_press_id) -> None:
     user_a = f"wka_{uuid.uuid4().hex[:10]}"
     user_b = f"wkb_{uuid.uuid4().hex[:10]}"
-    token_a = client.post("/api/v1/auth/register", json={"username": user_a, "password": "password123"}).json()["access_token"]
-    token_b = client.post("/api/v1/auth/register", json={"username": user_b, "password": "password123"}).json()["access_token"]
+    token_a = client.post("/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}).json()["access_token"]
+    token_b = client.post("/api/v1/auth/telegram-webapp", json={"init_data": make_init_data(new_telegram_id())}).json()["access_token"]
 
     response = client.post(
         "/api/v1/workouts", json={"name": "A's workout", "exercises": []}, headers={"Authorization": f"Bearer {token_a}"}

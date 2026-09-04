@@ -25,6 +25,16 @@ register_error_handlers(app)
 app.include_router(api_router)
 
 
+@app.on_event("startup")
+async def _promote_bootstrap_admins() -> None:
+    """Give the ids in BOOTSTRAP_ADMIN_TELEGRAM_IDS super_admin (D-32). Promote-only and
+    idempotent, so running it on every boot is safe — see app/core/bootstrap.py."""
+    from app.core.bootstrap import run_bootstrap
+    from app.core.db import async_session_factory
+
+    await run_bootstrap(async_session_factory, settings.bootstrap_admin_ids)
+
+
 @app.get("/health", tags=["health"])
 async def root_health() -> dict:
     """Unversioned health check for container orchestration / load balancers."""

@@ -4,7 +4,6 @@
     "workouts": "Workouts",
     "nutrition": "Nutrition",
     "aiCoach": "AI Coach",
-    "login": "Log in",
     "start": "Get Started",
     "dashboard": "Dashboard",
     "progress": "Progress",
@@ -29,7 +28,9 @@
       "progressBody": "Weight, body measurements, and strength gains — visualized as charts.",
       "telegramTitle": "Telegram Integration",
       "telegramBody": "One account, works seamlessly on both the website and the Telegram bot."
-    }
+    },
+    "openInTelegram": "Open in Telegram",
+    "telegramOnly": "This app runs inside Telegram — open the bot to sign in."
   },
   "common": {
     "save": "Save",

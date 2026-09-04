@@ -59,6 +59,7 @@ services:
 
   frontend:
     build: ./frontend
+    env_file: .env
     environment:
       # The Next.js server proxies /api/v1/* to this address itself (next.config.mjs) — the
       # browser only ever calls the frontend's own origin, which is what lets one public HTTPS

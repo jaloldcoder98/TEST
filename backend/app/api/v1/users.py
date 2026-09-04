@@ -5,8 +5,7 @@ from app.core.db import get_db
 from app.core.deps import get_current_user
 from app.models import User
 from app.repositories.user_repository import UserRepository
-from app.schemas.user import TelegramLinkRequest, UserOut, UserUpdateRequest
-from app.services import auth_service
+from app.schemas.user import UserOut, UserUpdateRequest
 
 router = APIRouter()
 
@@ -49,10 +48,3 @@ async def update_me(
     repo = UserRepository(db)
     return await repo.get_by_id(user.id)
 
-
-@router.post("/me/link-telegram")
-async def link_telegram(
-    data: TelegramLinkRequest, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
-) -> dict:
-    await auth_service.link_telegram(db, user.id, data.telegram_id, data.chat_id, data.telegram_username)
-    return {"success": True}

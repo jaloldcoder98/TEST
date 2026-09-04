@@ -35,7 +35,10 @@ export interface UserProfile {
   fat_target_g: number | null;
 }
 
+export type UserRole = "user" | "trainer" | "admin" | "super_admin";
+
 export interface User {
+  role: UserRole;
   id: string;
   username: string;
   email: string | null;
@@ -45,9 +48,11 @@ export interface User {
   profile: UserProfile | null;
 }
 
-export interface TokenResponse {
+/** What the server returns to a browser. Deliberately has no `refresh_token`: that goes out as
+ * an httpOnly cookie the page cannot read (docs/DECISIONS.md D-12, D-13). */
+export interface SessionResponse {
   access_token: string;
-  refresh_token: string;
+  csrf_token: string;
   token_type: string;
 }
 

@@ -116,7 +116,7 @@ async def diag_init_data(request: Request, payload: dict) -> dict:
     report — it is not a secret, and reading it does not imply the payload is trusted.
     """
     init_data = payload.get("init_data") or ""
-    if not settings.telegram_bot_token:
+    if not settings.telegram_bot_tokens:
         return {"checked": False, "reason": "TELEGRAM_BOT_TOKEN is not configured on this server"}
 
     fields = dict(parse_qsl(init_data, keep_blank_values=True))
@@ -125,7 +125,7 @@ async def diag_init_data(request: Request, payload: dict) -> dict:
 
     signature_valid, failure = True, None
     try:
-        verified = verify_telegram_webapp_init_data(init_data, settings.telegram_bot_token)
+        verified = verify_telegram_webapp_init_data(init_data, settings.telegram_bot_tokens)
     except AppError as exc:
         signature_valid, failure, verified = False, exc.message, None
 

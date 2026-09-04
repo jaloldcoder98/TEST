@@ -4,21 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api-client";
 import { useAuthStore } from "@/lib/stores/auth-store";
-import type { Language, TokenResponse, User } from "@/lib/types";
-
-interface RegisterInput {
-  username: string;
-  password: string;
-  email?: string;
-  first_name?: string;
-  last_name?: string;
-  language: Language;
-}
-
-interface LoginInput {
-  username: string;
-  password: string;
-}
+import type { SessionResponse, User } from "@/lib/types";
 
 async function fetchMe(): Promise<User> {
   return api.get<User>("/users/me");
@@ -28,10 +14,15 @@ async function fetchMe(): Promise<User> {
  * Not a react-query mutation like the others below — it runs once, imperatively, from an effect
  * before the rest of the app renders, so there's no UI action to attach a mutation hook to. */
 export async function telegramWebAppLogin(initData: string): Promise<User> {
-  const tokens = await api.post<TokenResponse>("/auth/telegram-webapp", { init_data: initData }, { skipAuth: true });
-  useAuthStore.setState({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
+  const session = await api.post<SessionResponse>(
+    "/auth/telegram-webapp",
+    { init_data: initData },
+    { skipAuth: true }
+  );
+  // Set before fetching the profile so that request carries the new bearer token.
+  useAuthStore.getState().setTokens(session.access_token, session.csrf_token);
   const user = await fetchMe();
-  useAuthStore.getState().setSession(tokens.access_token, tokens.refresh_token, user);
+  useAuthStore.getState().setSession(session.access_token, session.csrf_token, user);
   return user;
 }
 
@@ -45,41 +36,21 @@ export function useCurrentUser() {
   });
 }
 
-export function useRegister() {
-  const setSession = useAuthStore((s) => s.setSession);
-  return useMutation({
-    mutationFn: async (input: RegisterInput) => {
-      const tokens = await api.post<TokenResponse>("/auth/register", input, { skipAuth: true });
-      useAuthStore.setState({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
-      const user = await fetchMe();
-      setSession(tokens.access_token, tokens.refresh_token, user);
-      return user;
-    },
-  });
-}
-
-export function useLogin() {
-  const setSession = useAuthStore((s) => s.setSession);
-  return useMutation({
-    mutationFn: async (input: LoginInput) => {
-      const tokens = await api.post<TokenResponse>("/auth/login", input, { skipAuth: true });
-      useAuthStore.setState({ accessToken: tokens.access_token, refreshToken: tokens.refresh_token });
-      const user = await fetchMe();
-      setSession(tokens.access_token, tokens.refresh_token, user);
-      return user;
-    },
-  });
-}
-
 export function useLogout() {
   const clear = useAuthStore((s) => s.clear);
   const queryClient = useQueryClient();
   return () => {
-    const refreshToken = useAuthStore.getState().refreshToken;
-    if (refreshToken) {
-      api.post("/auth/logout", { refresh_token: refreshToken }).catch(() => {
-        // Best-effort server-side revocation — clearing local state is what actually matters
-        // for the user, so a network failure here shouldn't block logout.
+    const { csrfToken } = useAuthStore.getState();
+    if (csrfToken) {
+      // The refresh token itself is in an httpOnly cookie, so the request carries no body — the
+      // server reads the cookie and revokes the whole family (D-14). CSRF applies here too: a
+      // forced logout is a small attack, but the check is free.
+      fetch("/api/v1/auth/logout", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      }).catch(() => {
+        // Best-effort revocation; clearing local state is what the user actually experiences.
       });
     }
     clear();
