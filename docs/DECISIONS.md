@@ -361,6 +361,13 @@ Bu qoidalar har bosqichda, har PR'da amal qiladi. Buzilishi — bloklovchi xato.
 | **O-7** | **Mahalliy ovqat ma'lumotlari manbasi** (D-130) — ochiq manbadan yig'ilsinmi yoki mahsulot egasi beradimi | Mahsulot egasi | 9-bosqich |
 | **O-8** | **OpenAI API kaliti** — hali berilmagan | Mahsulot egasi | AI xususiyatlari va AI tarjima (8-bosqich). Qolgan hamma narsa bloklanmaydi |
 
+## 20. Ma'lum bug'lar (tuzatish kechiktirilgan)
+
+| # | Bug | Holati |
+|---|---|---|
+| **B-1** | **Botning matnli oqimida `/done` ishlamaydi.** `bot/handlers/workouts.py`: `search_exercise_to_add` (`@router.message(StateFilter(NewWorkout.searching))`) `NewWorkout.searching` holatidagi **barcha** xabarlarni ushlaydi va u `finish_new_workout` (`Command("done")`) dan **oldin** ro'yxatdan o'tadi. aiogram ishlovchilarni ro'yxatdan o'tish tartibida tekshirgani uchun `/done` qidiruv so'zi sifatida qayta ishlanadi va "mashq topilmadi" javobini oladi — ya'ni `/done` ishlovchisiga umuman yetib bo'lmaydi va mashg'ulotni matnli oqimda yakunlab bo'lmaydi. `/cancel` ta'sirlanmaydi (u `common.router` da, u `workouts.router` dan oldin ulanadi). Tuzatish: `finish_new_workout` ni qidiruv ishlovchisidan yuqoriga ko'chirish yoki qidiruv ishlovchisiga `~F.text.startswith("/")` filtri qo'shish. 2026-09-04 da Android'da aniqlangan | **Kechiktirilgan** (mahsulot egasi qarori). D-04 bo'yicha matnli oqim asosiy UX emas; bot ishlovchilariga 1-bosqichda baribir tegiladi (parol bilan `/link` olib tashlanadi) — tuzatishni o'sha yerda qamrab olish tabiiy |
+| **B-2** | Bir xil mashqni ikkinchi marta bosganda bot yana "qo'shildi" deydi, holbuki `add_exercise_to_draft` da dublikat qo'riqchisi bor va ro'yxatga qo'shilmaydi. Ma'lumot to'g'ri, **xabar chalg'itadi** | Kechiktirilgan, B-1 bilan birga |
+
 ---
 
 *Oxirgi yangilanish: 5-raund yakunida. Qaror o'zgarganda shu jadvallar o'zgarish bilan bir
