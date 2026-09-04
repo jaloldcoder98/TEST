@@ -33,6 +33,18 @@ Bosqich "tugadi" deyilishidan oldin quyidagilar **shu bosqich qamrovida** tekshi
 | 8 | Yangi sir/kalit `.env`da, Git'da emas |
 | 9 | Cross-user izolyatsiya testi yozilgan |
 
+### Hujjatlar siyosati
+
+Hujjat kod bilan **bir commitda** o'zgaradi; kelajakdagi holat oldindan qo'lda yozilmaydi.
+
+| Hujjat | Qachon yangilanadi |
+|---|---|
+| `docs/DATABASE.md` | 2-bosqichda, real sxema bilan birga |
+| `docs/API.md` | FastAPI OpenAPI — haqiqat manbai (D-175); endpointlar implementatsiyasi bilan generatsiya qilinadi/yangilanadi |
+| `docs/ARCHITECTURE.md` | Real arxitektura o'zgarishi ro'y berganda, o'sha bosqichda |
+| `docs/DECISIONS.md` | Qaror o'zgarganda, o'zgarish bilan bir commitda |
+| `docs/SECURITY_AUDIT.md` | 10-bosqichda to'liq qayta yoziladi |
+
 ---
 
 ## Bosqichlar xaritasi
@@ -70,13 +82,18 @@ Taxminga tayanib butun auth qurish — eng qimmat xato bo'lardi.
 
 **Test matritsasi**
 
-| Muhit | Cookie o'rnatiladimi | Qayta ochilganda saqlanadimi | `initData` yangilanadimi |
-|---|---|---|---|
-| Android Telegram (asosiy) | | | |
-| iOS Telegram | | | |
-| Telegram Desktop | | | |
-| Telegram Web (Chrome) | | | |
-| Telegram Web (Safari) | | | |
+| Muhit | Cookie o'rnatiladimi | Qayta ochilganda saqlanadimi | `initData` yangilanadimi | `Origin`/`Referer` bormi va ishonchlimi |
+|---|---|---|---|---|
+| Android Telegram (asosiy) | | | | |
+| iOS Telegram | | | | |
+| Telegram Desktop | | | | |
+| Telegram Web (Chrome) | | | | |
+| Telegram Web (Safari) | | | | |
+| Telegram Web (Firefox) | | | | |
+
+Oxirgi ustun — D-19 uchun: `Origin`/`Referer` CSRF himoyasining **qo'shimcha** qatlami, shuning
+uchun ular yo'q bo'lgan muhit ham qabul qilinadi; muhimi — bu holatni bilib turish va CSRF
+tokenli qatlamga tayanish.
 
 **Yetkazma**
 - `docs/TELEGRAM_WEBVIEW_MATRIX.md` — to'ldirilgan jadval, skrinshotlar, xulosalar.
@@ -100,8 +117,8 @@ iOS uchun hujjatlashtirilgan taxmin va 6-bosqich betasida tekshirish.
   `RefreshToken`ga `family_id`, `replaced_by_id`, `revoked_reason` qo'shiladi (D-14).
 - `app/services/auth_service.py` — `register`/`login` olib tashlanadi; `telegram_webapp_auth`
   yagona kirish nuqtasi; reuse detection va family revoke.
-- `app/core/telegram_webapp.py` — freshness 300s (D-16); Redis'da bir martalik hash (D-17);
-  `TELEGRAM_BOT_TOKEN_PREVIOUS` (D-18).
+- `app/core/telegram_webapp.py` — freshness 300s (D-16); Redis'da takroriy payload hisoblagichi
+  (abuse cheklovi, **bir martalik nonce emas** — D-17); `TELEGRAM_BOT_TOKEN_PREVIOUS` (D-18).
 - `app/api/v1/auth.py` — `/telegram-webapp`, `/refresh` (cookie + CSRF), `/logout`.
   `/telegram` (bot uchun) shared secret header bilan himoyalanadi (D-20).
 - `app/core/deps.py` — `require_role(...)`; ruxsatsizda 404 (D-112).
@@ -111,9 +128,13 @@ iOS uchun hujjatlashtirilgan taxmin va 6-bosqich betasida tekshirish.
 - Bot: `/link` → "akkauntingiz avtomatik bog'langan" xabari (D: E4); `X-Bot-Secret` yuboradi.
 
 **Testlar**
-- `initData` imzosi, muddati, replay rad etilishi, ikki bot token oynasi.
+- `initData` imzosi, muddati, ikki bot token oynasi.
+- **Legitim reload testi:** bir xil `initData` bilan qayta auth rad etilmaydi (D-17); takroriy
+  payload faqat abuse chegarasidan oshgandagina cheklanadi.
+- Cookie yo'q/rad etilgan holatda silent re-auth ishlaydi (D-15, invariant 16).
 - Refresh rotation; **reuse detection → butun oila revoke**; logout.
-- CSRF: token yo'q/noto'g'ri/`Origin` noto'g'ri → rad.
+- CSRF: token yo'q/noto'g'ri → rad (asosiy qatlam). `Origin`/`Referer` yo'q bo'lgan muhitda ham
+  CSRF tokenli himoya ishlashda davom etadi (D-19).
 - Rol: `user` → admin yo'liga 404; `admin` → ruxsat; `super_admin` → rol berish.
 - Bootstrap idempotentligi va mavjud adminni tushirmasligi.
 - Bot endpointi shared secretsiz → rad.
@@ -125,15 +146,20 @@ hech qanday forma ko'rmay dashboardga tushadi; cookie yo'q holatda ham (Web) ish
 
 ## 2-bosqich — Sxema poydevori
 
-**Maqsad:** yagona toza baseline migratsiya (D-100), `docs/DATABASE.md` yangilanadi.
+**Maqsad:** yagona toza Alembic baseline (D-100), `docs/DATABASE.md` yangilanadi.
 
-**Qamrov**
-- Eski migratsiya zanjiri o'rniga bitta yangi baseline.
+Qamrov to'rtta ichki qadamga bo'lingan — **bitta bosqich va bitta PR ichida qoladi**, maqsad
+faqat migratsiya va sxema ishini boshqariladigan bo'laklarga ajratish. Har substep o'z
+testlari bilan yopiladi, keyin keyingisiga o'tiladi.
+
+### 2A — Yadro: DB / auth / user / workout sxemasi
+- Eski migratsiya zanjiri o'rniga bitta yangi baseline (`down_revision = None`); eski fayllar
+  Git tarixida qoladi, bog'liqlik emas (D-100).
 - `NUMERIC` ko'chishi (D-10A) + Pydantic `Decimal`; frontend JSON serializatsiyasi tekshiriladi.
-- `exercise_tracking_type` + `tracking_type_source` (D-101) + `workout_sets` CHECK'lari (D-102).
-- `exercises`: `media_key`, `media_provider`, `media_license_status`, `license_note`,
-  `license_url`; `gif_url`/`image_url` olib tashlanadi (D-80, D-83).
-- `exercise_translations` status maydonlari (D-91).
+- `users`: `password_hash` olib tashlanadi, `role` enum (D-30), `unit_system`, `profile_completion`.
+- `user_profiles`: `date_of_birth` majburiy onboarding maydoni sifatida ishlatiladi; yosh
+  hisoblab chiqariladi, saqlanmaydi (D-52).
+- `RefreshToken`: `family_id`, `replaced_by_id`, `revoked_reason` (D-14).
 - `workout_session_exercises` kiritiladi; `workout_sets.workout_session_exercise_id` (D-103);
   `client_event_id` + `UNIQUE(session_id, client_event_id)` (D-61); `entered_value`/`entered_unit`
   (D-10B); `set_type`; `rpe`; `distance_m`; `deleted_at`.
@@ -141,15 +167,26 @@ hech qanday forma ko'rmay dashboardga tushadi; cookie yo'q holatda ham (Web) ish
   `abandoned` status, bitta faol sessiya uchun qisman unique indeks (D-66).
 - `personal_records` log modeliga (D-106) + `estimated_1rm` (D-107).
 - `body_measurements` `UNIQUE(user_id, date)` (D-10D).
-- Dastur jadvallari (D-70..D-7A): `program_templates`, `program_template_translations`,
-  `program_template_days`, `program_template_day_exercises`, `program_template_set_targets`,
-  `user_programs`, `user_program_days`, `user_program_day_exercises`, `user_program_set_targets`.
-- `food_item_translations`, `food_item_servings` (D-94, D-133).
-- `translation_glossary` (D-97).
-- `audit_logs` append-only (DB grant darajasida, D-122).
-- `users.unit_system`, `profile_completion`.
+
+### 2B — Mashqlar: media, tarjima, importer
+- `exercise_tracking_type` + `tracking_type_source` (D-101); `workout_sets` CHECK'lari (D-102).
+- `exercises`: `media_key`, `media_provider`, `media_license_status`, `license_note`,
+  `license_url`; `gif_url`/`image_url` olib tashlanadi (D-80, D-83).
+- `exercise_translations` status maydonlari (D-91).
 - Importer yangilanadi: `media_key`, `tracking_type`, `source='imported'`, maydon override
   bayroqlari (D-117).
+
+### 2C — Dasturlar sxemasi
+- `program_templates`, `program_template_translations`, `program_template_days`,
+  `program_template_day_exercises`, `program_template_set_targets` (D-70..D-72, D-77, D-95).
+- `user_programs`, `user_program_days`, `user_program_day_exercises`, `user_program_set_targets`
+  (D-73, D-74).
+- Guruhlash ustunlari: `group_key`, `group_type`, `group_order`, `group_rounds` (D-7A).
+
+### 2D — Nutrition, audit va yordamchi sxema
+- `food_item_translations`, `food_item_servings` (D-94, D-133).
+- `translation_glossary` (D-97).
+- `audit_logs` append-only (DB grant darajasida, D-122) + diff maydoni (D-121).
 
 **Testlar**
 - `alembic upgrade head` toza bazada; import 1323 mashqni yozadi.
@@ -157,6 +194,7 @@ hech qanday forma ko'rmay dashboardga tushadi; cookie yo'q holatda ham (Web) ish
 - `client_event_id` dublikati yangi qator yaratmaydi.
 - Bitta faol sessiya indeksi ikkinchisini rad etadi.
 - `Decimal` API orqali to'g'ri serializatsiya bo'ladi.
+- `audit_logs`ga UPDATE/DELETE urinishi DB darajasida rad etiladi.
 
 **Chiqish mezoni:** yangi sxema o'rnatiladi, ma'lumot importlanadi, barcha mavjud testlar
 yangilangan holda yashil. `docs/DATABASE.md` haqiqatga mos.
@@ -229,6 +267,11 @@ dastur boshlash → sessiya → setlar → tugatish; oflayn simulyatsiyasi.
 
 **Testlar:** PR sindirilishi va tiklanishi; set o'chirilganda oldingi PR qaytishi; 24 soatdan
 keyin tahrir rad etilishi; kursor sahifalashning barqarorligi.
+
+**Majburiy qabul testi (D-69, D-106):** tugallangan sessiyada set tahrirlanadi → PR qayta
+hisoblanadi → eskirgan PR `superseded` holatiga o'tadi → yangi PR holati to'g'ri shakllanadi.
+Qayta hisoblash **idempotent**: ikki marta ishga tushirilganda natija o'zgarmaydi; joriy PR
+har doim `(user_id, exercise_id, record_type)` bo'yicha eng oxirgi `superseded` bo'lmagan yozuv.
 
 **➡️ Shu bosqichdan keyin closed beta (10–30 foydalanuvchi).**
 

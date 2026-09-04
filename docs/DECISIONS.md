@@ -53,11 +53,11 @@ Mahsulot **Telegram Mini App markazli B2C fitnes platformasi**ga qayta yo'naltir
 | **D-12** | **Access token** — faqat JS xotirasida (RAM), 10–15 daqiqa. Hech qachon `localStorage`/`sessionStorage`/`CloudStorage`da saqlanmaydi |
 | **D-13** | **Refresh token** — `__Host-` prefiksli, `httpOnly; Secure; SameSite=None; Partitioned; Path=/` cookie. `Domain` atributi ishlatilmaydi |
 | **D-14** | Refresh sessiya muddati **7 kun**; rotation + **reuse detection** + **family revoke** |
-| **D-15** | **Cookie — haqiqat manbai emas, optimizatsiya.** Cookie yo'q/rad etilgan bo'lsa → yangi `initData` bilan **silent re-auth**. Foydalanuvchi hech qachon login formasini ko'rmaydi |
+| **D-15** | **Cookie — haqiqat manbai emas, muhitga bog'liq optimizatsiya.** Refresh cookie mavjud bo'lmasa yoki rad etilsa, autentifikatsiya **ishlashdan to'xtamaydi**: yangi `initData` bilan **silent re-auth** — bu ixtiyoriy yaxshilanish emas, **majburiy fallback** (invariant 16). Cookie ishlamaydigan muhit (Telegram Web iframe, Safari ITP, WKWebView tozalashi) — kutilgan holat, xato emas. Foydalanuvchi hech qachon login formasini ko'rmaydi |
 | **D-16** | `initData` freshness oynasi — **300 soniya** (24 soat emas) |
-| **D-17** | `initData` **bir marta ishlatiladi**: hash Redis'da 5 daqiqaga saqlanadi, takroriy kelsa rad etiladi. Legitim reload oqimlari integratsion test bilan qoplanadi |
+| **D-17** | **Replay himoyasi — bir martalik nonce emas.** Redis'da `initData` payload/imzosining hashi 5 daqiqa TTL bilan saqlanadi va **aynan bir xil payload takroran yuborilishi suiiste'mol darajasida cheklanadi** (rate limiting/abuse detection). Bu "Telegram sessiyasi bir marta ishlatiladi" degani **emas**: legitim reload yoki qayta auth — jumladan Telegram bergan yangi `initData` — hech qachon "bu hash avval ko'rilgan" sababi bilan rad etilmaydi. Yagona qat'iy rad etish sabablari: imzo nomuvofiqligi va D-16 dagi 300 soniyalik freshness. Legitim reload oqimlari integratsion test bilan qoplanadi |
 | **D-18** | Bot token rotatsiyasi uchun `TELEGRAM_BOT_TOKEN` + `TELEGRAM_BOT_TOKEN_PREVIOUS` — o'tish davrida ikkalasi ham qabul qilinadi |
-| **D-19** | **CSRF — uch qatlam:** (1) cookie faqat `POST /auth/refresh`da ishlatiladi, qolgan hamma joyda `Authorization: Bearer`; (2) double-submit CSRF token (`X-CSRF-Token`); (3) `Origin`/`Referer` validatsiyasi |
+| **D-19** | **CSRF — uch qatlam:** (1) cookie faqat `POST /auth/refresh`da ishlatiladi, qolgan hamma joyda `Authorization: Bearer`; (2) **asosiy himoya** — double-submit CSRF token maxsus headerda (`X-CSRF-Token`); (3) `Origin`/`Referer` validatsiyasi — **qo'shimcha qatlam, yagona himoya emas**. Bu headerlarning Telegram Android/iOS/Desktop/Web muhitlarida mavjudligi va ishonchliligi 0-bosqichda **empirik tekshiriladi**; ular yo'q yoki nomuvofiq bo'lsa ham refresh endpointi (2)-qatlam bilan himoyalangan bo'lib qoladi |
 | **D-20** | Bot → backend chaqiruvlari: **shared secret header** (`X-Bot-Secret`, constant-time solishtirish) + imkon bo'lsa internal tarmoq cheklovi. `telegram_id`ni request body'dan olib login qilish **taqiqlanadi** |
 | **D-21** | `initData` bo'lmagan brauzer: "Bu ilova Telegram ichida ishlaydi" sahifasi + botga tugma |
 
@@ -99,7 +99,7 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 | ID | Qaror |
 |---|---|
 | **D-40** | MVPda `organization_id` **qo'shilmaydi** — o'qilmaydigan nullable ustun o'lik yuk va yolg'on xotirjamlik beradi |
-| **D-41** | O'rniga bepul turadigan 5 ta seam: (1) barcha scoped so'rovlar bitta `scoped()` yordamchisidan o'tadi; (2) `slug` unikalligi kelajakda `(organization_id, slug)` bo'lishi hujjatlashtiriladi; (3) UUID PK (allaqachon); (4) kontent va user ma'lumoti ajratiladi; (5) `can(user, feature)` entitlement seam |
+| **D-41** | O'rniga bepul turadigan 5 ta seam: (1) **user-owned / kirish nazorati qilinadigan so'rovlar markazlashtirilgan avtorizatsiya va query-scope qatlamidan o'tadi** — bu bugun real ehtiyojni (har repozitoriyda takrorlanadigan `user_id` filtrini) hal qiladigan qatlam, kelajakda tenant filtri qo'shiladigan yagona nuqta bo'lib ham xizmat qiladi; **MVPda mavjud bo'lmagan `organization_id` uchun soxta abstraksiya yaratilmaydi**; (2) `slug` unikalligi kelajakda `(organization_id, slug)` bo'lishi hujjatlashtiriladi; (3) UUID PK (allaqachon); (4) kontent va user ma'lumoti ajratiladi; (5) `can(user, feature)` entitlement seam |
 | **D-42** | Kelajakdagi migratsiya: `organizations` → `users.organization_id` backfill → `organization_members(user_id, org_id, role)` → kontent jadvallariga `organization_id NULL = platforma-global` |
 
 ---
@@ -110,7 +110,7 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 |---|---|
 | **D-50** | 5 ta pastki tab: **Bosh sahifa · Mashqlar · Trening · Ovqatlanish · Profil**. Progress alohida tab emas: bosh sahifada qisqa summary, batafsili Profil/Trening ichida |
 | **D-51** | Bosh sahifa "bugun nima qilish kerak?" savoliga darhol javob beradi |
-| **D-52** | Onboarding majburiy maydonlari: til, yosh, bo'y, vazn, maqsad, tajriba darajasi, haftalik trening kunlari. **Jins — ixtiyoriy.** Skip mumkin, `profile_completion` holati saqlanadi |
+| **D-52** | Onboarding majburiy maydonlari: til, **tug'ilgan sana** (yoki aniq `birth_year`), bo'y, vazn, maqsad, tajriba darajasi, haftalik trening kunlari. **Yosh statik saqlanmaydi** — `user_profiles.date_of_birth`dan hisoblab chiqariladi (aks holda qiymat har yil eskirib boradi). **Jins — ixtiyoriy.** Skip mumkin, `profile_completion` holati saqlanadi |
 | **D-53** | Til Telegram `language_code`dan avtomatik: `uz*`→uz, `ru*`→ru, qolgani→en. Profil→Sozlamalarda qo'lda o'zgartiriladi. Fallback: `en` |
 | **D-54** | Telegram integratsiyasi: `themeParams` (majburiy), `BackButton` (majburiy), `expand` (majburiy), `disableVerticalSwipes` (sessiya paytida majburiy), haptic feedback, `MainButton` (kerakli ekranlarda). `CloudStorage` — MVPda yo'q |
 
@@ -129,7 +129,7 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 | **D-66** | Bir userda bir vaqtda **bitta** faol sessiya. DB darajasida qisman unique indeks |
 | **D-67** | Sessiya statuslari: `in_progress · paused · completed · abandoned · cancelled`. `cancelled` = user bekor qildi, `abandoned` = tizim 24 soatdan keyin yopdi |
 | **D-68** | Ilova qayta ochilganda tugallanmagan sessiya uchun "Davom ettirasizmi?" |
-| **D-69** | Tugallangan sessiyani tahrirlash — **24 soat ichida**, keyin read-only. Har tahrirdan keyin agregatlar va PR'lar qayta hisoblanadi |
+| **D-69** | Tugallangan sessiyani tahrirlash — **24 soat ichida**, keyin read-only. Har tahrirdan keyin agregatlar va PR'lar qayta hisoblanadi. **Majburiy qabul testi:** tugallangan sessiyada set tahriri → PR qayta hisoblanishi → eskirgan PR `superseded` holatiga o'tishi → yangi PR holatining to'g'ri shakllanishi (6-bosqich) |
 
 ---
 
@@ -186,13 +186,13 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 
 | ID | Qaror |
 |---|---|
-| **D-100** | **Toza baseline migratsiya.** Eski migratsiya zanjiri almashtiriladi, ma'lumot qayta import qilinadi. Migratsiya tarixi Git'da qoladi; production sxemasi qo'lda o'zgartirilmaydi |
+| **D-100** | **Toza Alembic baseline.** Productionda real foydalanuvchi yo'qligi sababli eski migratsiya zanjiri o'rniga bitta yangi baseline yaratiladi va ma'lumot qayta import qilinadi. Eski migratsiya fayllari **Git tarixida qoladi, lekin yangi baseline'ning bog'liqligi emas** (`down_revision = None`). Production va staging sxemasi **faqat Alembic orqali** o'zgaradi — hech qachon qo'lda SQL bilan emas |
 | **D-101** | `exercise_tracking_type`: `strength \| bodyweight \| cardio \| timed` + `tracking_type_source` (`derived \| admin_override`). Importda avtomatik aniqlanadi: `cardio`→cardio, `stretching`→timed, `bodyweight` jihoz→bodyweight, qolgani→strength. `plyometrics`→bodyweight |
 | **D-102** | `workout_sets` DB CHECK: strength→weight+reps; bodyweight→reps; cardio→duration yoki distance; timed→duration |
 | **D-103** | **`workout_session_exercises`** kiritiladi — sessiya boshlanganda reja + target'lar snapshot qilinadi. `workout_sets.workout_exercise_id` → **`workout_session_exercise_id`** |
 | **D-104** | `workout_sessions` manbasi: `source_type` + `workout_id` / `user_program_day_id` (nullable FK + CHECK; polimorf ID emas) |
 | **D-105** | To'rt tushuncha aniq ajratiladi: `program_template` (admin) · `user_program` (klon) · `workout` (userning qayta ishlatiladigan shaxsiy rejasi) · `workout_session` (bajarilgan real trening). **Tarix faqat `workout_session` orqali** |
-| **D-106** | `personal_records` — **rekordlar tarixi (log)**, joyida yangilash emas. `superseded_at`, kontekst (`reps`, `weight_kg`), `UNIQUE(user, exercise, type, workout_set_id)`. Manba setlardan **qayta hisoblanadigan** bo'lishi shart |
+| **D-106** | `personal_records` — **rekordlar tarixi (log)**, joyida yangilash emas. `superseded_at`, kontekst (`reps`, `weight_kg`), `UNIQUE(user, exercise, type, workout_set_id)`. **Joriy PR = `(user_id, exercise_id, record_type)` bo'yicha eng oxirgi `superseded` bo'lmagan yozuv.** Manba setlardan qayta hisoblanadigan bo'lishi shart; qayta hisoblash **deterministik va idempotent** — bir xil setlar to'plami har doim bir xil PR holatini beradi (invariant 17) |
 | **D-107** | Rekord turlari: `max_weight`, `max_reps`, `max_volume`, **`estimated_1rm`** (Epley: `w × (1 + reps/30)`), kodda va UI'da "taxminiy" deb belgilanadi |
 | **D-108** | PR **har set yozilganda** hisoblanadi (sync'dan keyin). Idempotent. Offline holatda UI PR va'da qilmaydi |
 | **D-109** | PR qoidalari: isinish setlari hisobga olinmaydi; `weight_kg IS NULL` bo'lsa `max_weight` hisoblanmaydi |
@@ -271,7 +271,7 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 |---|---|
 | **D-140** | Hosting joyi **yuridik tekshiruvdan keyin** tanlanadi. Arxitektura location-independent: DB, obyekt saqlash, zaxiralar, loglar joyi konfiguratsiya bilan almashadi. O'zbekiston hostingi — asosiy nomzod |
 | **D-141** | GDPR birlamchi maqsad emas (asosiy bozor — O'zbekiston/Markaziy Osiyo), lekin privacy-by-design saqlanadi va GDPR keyin qo'shilishi mumkin |
-| **D-142** | Akkaunt o'chirish: **30 kunlik yumshoq o'chirish → doimiy anonimlashtirish**. 30 kun ichida tiklash mumkin. Keyin: Telegram identity olib tashlanadi, PII tozalanadi, trening tarixi anonim qoladi, agregat statistika saqlanadi. FK butunligi buzilmaydi |
+| **D-142** | Akkaunt o'chirish: **30 kunlik yumshoq o'chirish → doimiy anonimlashtirish**. O'chirish so'rovi **darhol barcha faol refresh-token oilalarini va sessiyalarni revoke qiladi** — akkaunt shu zahoti kirib bo'lmaydigan holatga o'tadi. 30 kunlik grace davrida tiklash **faqat Telegram qayta autentifikatsiyasi orqali** amalga oshiriladi. Muddat tugagach: Telegram identity olib tashlanadi, PII tozalanadi, trening tarixi anonim qoladi, agregat statistika saqlanadi. FK butunligi buzilmaydi |
 | **D-143** | O'chirishni user (Mini App: ogohlantirish → yakuniy tasdiq) yoki admin (sabab + audit) boshlaydi. OTP shart emas; re-auth/confirmation arxitekturasi ochiq qoladi |
 | **D-144** | Ma'lumot eksporti: JSON + CSV. Asosiy yetkazish — **bot orqali fayl** (Telegram WebView'da yuklab olish cheklangan). Mini App'da ham endpoint bo'lishi mumkin |
 | **D-145** | Saqlash muddatlari: audit 1 yil · AI suhbatlari 90 kun · ovqat rasmlari 30 kun · refresh token yozuvlari muddat+30 kun · faol bo'lmagan akkaunt 24 oy → ogohlantirish → anonimlashtirish · trening tarixi cheksiz. Muddatlar konfiguratsiya orqali o'zgaradi |
@@ -286,7 +286,7 @@ takrorlanmaydigan muammo. **D-15 aynan shuning uchun majburiy.**
 | ID | Qaror |
 |---|---|
 | **D-150** | IP-only limiter **ishlatilmaydi** (CGNAT sababli haqiqiy foydalanuvchilar bloklanadi). Autentifikatsiyasiz → IP + `telegram_id`; autentifikatsiyalangan → `user_id`; admin → admin `user_id` |
-| **D-151** | `POST /workout-sessions/{id}/sets/batch` — 50 setgacha, har biri `client_event_id` bilan, idempotent. Set uchun token bucket: burst 100, refill 20/daqiqa. **Rate limit sababli trening ma'lumoti yo'qolmasin** |
+| **D-151** | `POST /workout-sessions/{id}/sets/batch` — 50 setgacha, har biri `client_event_id` bilan, idempotent. Set uchun token bucket **`user_id` qamrovida** (IP bo'yicha emas — D-150): burst 100, refill 20/daqiqa. **Rate limit sababli trening ma'lumoti yo'qolmasin** |
 | **D-152** | Limitlar: telegram-webapp 60/min (IP) va 10/min (telegram_id) · refresh 60/min/user · exercises read 300/min · set/batch 100 burst 20/min · AI 20/kun + oylik token byudjeti · nutrition image 30/kun · admin oddiy 120/min · admin bulk 10/soat. Real metrikalar asosida sozlanadi |
 | **D-153** | Redis ishlamasa: oddiy foydalanuvchi endpointlari **fail-open**, admin/destruktiv endpointlar **fail-closed** |
 | **D-154** | 429 javobida `Retry-After`; klientda eksponensial backoff + jitter (offline navbat uchun majburiy) |
@@ -343,6 +343,8 @@ Bu qoidalar har bosqichda, har PR'da amal qiladi. Buzilishi — bloklovchi xato.
 13. **Kunlik statistika `Asia/Tashkent` bo'yicha.**
 14. **Xavfsizlik/maxfiylik — kechiktiriladigan feature emas.** Har bosqichda authentication, authorization, validation, rate limiting, audit, privacy, input sanitization, error handling va secret management o'z qamrovida tekshiriladi. 10-bosqich — yakuniy audit, birinchi ko'rib chiqish emas.
 15. **DB darajasidagi cheklovlar** biznes qoidalarini himoya qiladi, faqat Python validatsiyasi emas.
+16. **Cookie yo'qligi auth'ni to'xtatmaydi.** Refresh cookie — muhitga bog'liq optimizatsiya; u mavjud bo'lmasa yoki rad etilsa, `initData` orqali silent re-auth majburiy fallback sifatida ishlaydi (D-13, D-15).
+17. **PR qayta hisoblash deterministik va idempotent.** Joriy PR — `(user_id, exercise_id, record_type)` bo'yicha eng oxirgi `superseded` bo'lmagan yozuv (D-106).
 
 ---
 
@@ -353,7 +355,7 @@ Bu qoidalar har bosqichda, har PR'da amal qiladi. Buzilishi — bloklovchi xato.
 | **O-1** | **Media litsenziyasi.** GIF'lar `JahelCuadrado/ExerciseGymGifsDB` repozitoriyasidan; uning README'si mualliflik huquqiga egalik qilmasligini aytadi | Mahsulot egasi + yurist | Commercial production release (D-85). Development/beta bloklanmaydi |
 | **O-2** | **Ma'lumot lokalizatsiyasi.** O'zbekiston shaxsiy ma'lumotlar qonuni talablari | Yurist | Production hosting tanlash (D-140) |
 | **O-3** | **Domen va hosting provayderi** | Mahsulot egasi | 11-bosqich (deploy) |
-| **O-4** | **Test qurilmalari** — qaysi klientlar fizik mavjud (Android/iOS/Desktop/Web) | Mahsulot egasi | 0-bosqich test matritsasi |
+| **O-4** | **Fizik test qurilmalari ro'yxati.** Maqsadli muhitlar aniq: **Android, iOS, Telegram Desktop, Telegram Web**; Telegram Web ichida Chrome, Safari va Firefox alohida test holatlari. Ochiq qolgan yagona narsa — bu kombinatsiyalardan qaysilari **fizik mavjud**. Mavjud bo'lmaganlari Playwright + hujjatlashtirilgan cheklov bilan qoplanadi (D-23) | Mahsulot egasi (alohida tasdiqlaydi) | 0-bosqichning **to'liqligi** (qamrovi emas) |
 | **O-5** | **Dastur mazmunini kim yozadi** — 6 ta boshlang'ich dasturning mashq tanlovi va target'lari (D-79) | Mahsulot egasi yoki murabbiy | 4-bosqich yakuni |
 | **O-6** | **O'zbekcha fitnes atamalari lug'ati** (D-97) — "set", "rep", "failure", "warm-up" kabi 50–100 atamaning tasdiqlangan tarjimasi | Mahsulot egasi | 8-bosqich |
 | **O-7** | **Mahalliy ovqat ma'lumotlari manbasi** (D-130) — ochiq manbadan yig'ilsinmi yoki mahsulot egasi beradimi | Mahsulot egasi | 9-bosqich |
