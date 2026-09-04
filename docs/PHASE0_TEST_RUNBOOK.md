@@ -76,13 +76,19 @@ make seed
 operatori yo'q, shuning uchun har buyruqni **alohida qatorda** yozing:
 
 ```powershell
-docker compose up --build -d
+docker compose up -d --build
 docker compose exec backend alembic upgrade head
 docker compose exec backend python scripts/import_exercises.py
 docker compose exec backend python scripts/seed_database.py
 ```
 
 To'liq Windows buyruqlari jadvali — §7.
+
+> **`--build` ni tushirib qoldirmang.** `docker-compose.yml` da `backend` xizmatining kodi
+> volume orqali ulangan, lekin **`frontend` va `telegram-bot` xizmatlarida bunday emas** —
+> ularning kodi image ichiga qotib qoladi. Ya'ni `git pull` qilganingizdan keyin
+> `docker compose restart` yangi kodni **olmaydi**: diagnostika sahifasi ham, `/diag`
+> buyrug'i ham paydo bo'lmaydi. Kod o'zgargach har doim `docker compose up -d --build`.
 
 **Docker'siz (README dagi native yo'l):** backend `:8000`, frontend `:3000` da ishlashi kerak.
 Frontend `/api/v1/*` ni backendga o'zi uzatadi — **bitta ommaviy manzil yetarli**, backendni
@@ -123,12 +129,16 @@ FRONTEND_URL=https://xxxx-xx-xx.ngrok-free.app
 > manzildan o'zi hosil qiladi. Ya'ni test tugagach `FRONTEND_URL` ni orqaga qaytarish ham
 > shart emas.
 
-Botni qayta ishga tushiring, u yangi manzilni o'qib olsin:
+Botni yangi manzil bilan qayta yarating:
 
 ```bash
-docker compose restart telegram-bot
+docker compose up -d --build telegram-bot
 ```
 *(Bu buyruq Windows'da ham aynan shunday.)*
+
+> `restart` emas, `up -d` — `docker compose restart` konteynerni o'sha eski muhit
+> o'zgaruvchilari bilan qayta ishga tushiradi va `.env` dagi yangi `FRONTEND_URL` ni
+> **o'qimaydi**. `--build` esa botning yangi kodini oladi.
 
 > Ngrok'ning bepul tarifida URL har qayta ishga tushirishda o'zgaradi. O'zgarsa — `FRONTEND_URL`
 > ni yangilang va botni qayta ishga tushiring.
@@ -227,7 +237,9 @@ D-13 / D-15 / D-19 bo'yicha yakuniy xulosa yozaman.
 |---|---|
 | `/api/v1/_diag/env` → **404** | `DEBUG` `true` emas. `.env` ni tekshiring va backendni qayta ishga tushiring |
 | `/diag` "FRONTEND_URL https:// bo'lishi kerak" deydi | `.env` dagi `FRONTEND_URL` bo'sh yoki `http://`. Tunnel manzilini qo'ying va botni qayta ishga tushiring |
-| `/diag` buyrug'i umuman javob bermaydi | Bot qayta ishga tushirilmagan: `docker compose restart telegram-bot` |
+| `/diag` buyrug'i umuman javob bermaydi | Bot image'i eski. `git pull` qiling va **`docker compose up -d --build telegram-bot`** (`restart` yetarli emas — bot kodi volume orqali ulanmagan) |
+| Diagnostika sahifasi 404 beradi | Frontend image'i eski: `docker compose up -d --build frontend` |
+| `.env` ni o'zgartirdim, lekin ta'sir qilmadi | `restart` `.env` ni qayta o'qimaydi: `docker compose up -d <xizmat>` |
 | Ngrok "You are about to visit…" sahifasi chiqdi | Bu normal — **"Visit Site"** ni bosing. Halaqit bersa `cloudflared` ga o'ting (§1.4) |
 | Sahifa ochiladi, lekin "Telegram SDK: YO'Q" | Sahifa brauzerda ochilgan. Faqat bot tugmasi orqali oching |
 | "initData mavjud: YO'Q" | Xuddi shu sabab — yoki `FRONTEND_URL` noto'g'ri sahifaga yo'naltirilgan |
@@ -256,7 +268,7 @@ yo'riqnomada uchraydi.
 
 | `make` | PowerShell |
 |---|---|
-| `make up` | `docker compose up --build -d` |
+| `make up` | `docker compose up -d --build` |
 | `make down` | `docker compose down` |
 | `make logs` | `docker compose logs -f` |
 | `make migrate` | `docker compose exec backend alembic upgrade head` |
@@ -267,6 +279,18 @@ yo'riqnomada uchraydi.
 `make up` fonda ishlamaydi (terminalni band qiladi) — Windows'da `-d` qo'shilgani shuning uchun:
 keyingi buyruqlarni o'sha oynada yozishingiz mumkin. Loglarni ko'rish uchun
 `docker compose logs -f telegram-bot`.
+
+### Qaysi xizmat qachon qayta qurilishi kerak
+
+| Xizmat | Kod volume orqali ulanganmi | Kod o'zgargach |
+|---|---|---|
+| `backend` | ✅ ha (`./backend:/app`) | `docker compose restart backend` yetadi |
+| `frontend` | ❌ yo'q | **`docker compose up -d --build frontend`** |
+| `telegram-bot` | ❌ yo'q | **`docker compose up -d --build telegram-bot`** |
+
+`.env` o'zgarganda esa uchalasi uchun ham `up -d` kerak — `restart` muhit o'zgaruvchilarini
+qayta o'qimaydi. Shubha bo'lsa, hamma narsani qamrab oladigan bitta buyruq:
+`docker compose up -d --build`.
 
 ### Boshqa muqobillar
 
