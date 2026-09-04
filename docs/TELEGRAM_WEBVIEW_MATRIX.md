@@ -227,6 +227,7 @@ kerak:
 | `backend/app/api/v1/diag.py` | 0-bosqich yopilgach **o'chiriladi** |
 | `backend/app/api/v1/router.py` dagi `if settings.debug:` bloki | 0-bosqich yopilgach **o'chiriladi** |
 | `frontend/public/_diag/webview.html` | 0-bosqich yopilgach **o'chiriladi** |
+| `bot/handlers/diag.py` va `bot/main.py` dagi `/diag` qatorlari | 0-bosqich yopilgach **o'chiriladi** |
 | `tools/webview-sim/` | Qoladi — regressiya tekshiruvi sifatida foydali |
 | Ushbu hujjat | Qoladi — qaror asoslari yozuvi sifatida |
 

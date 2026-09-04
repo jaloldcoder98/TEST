@@ -83,7 +83,7 @@ curl -s http://localhost:8000/api/v1/_diag/env                   # DEBUG rejimi 
 ```
 Ikkinchisi JSON qaytarishi kerak. `404` qaytsa — `DEBUG` `true` emas.
 
-### 1.4 Tunnel va bot tugmasi
+### 1.4 Tunnel
 
 Telegram faqat haqiqiy `https://` manzilni qabul qiladi — `http://` ham, `localhost` ham
 ishlamaydi.
@@ -93,23 +93,33 @@ ngrok http 3000
 # chiqadi: https://xxxx-xx-xx.ngrok-free.app
 ```
 
-`.env` da `FRONTEND_URL` ni **to'g'ridan-to'g'ri diagnostika sahifasiga** yo'naltiring:
+`.env` da **faqat shu bitta qatorni** yangilang:
 
 ```ini
-FRONTEND_URL=https://xxxx-xx-xx.ngrok-free.app/_diag/webview.html
+FRONTEND_URL=https://xxxx-xx-xx.ngrok-free.app
 ```
 
-Botni qayta ishga tushiring, u yangi tugma manzilini o'qib olsin:
+> Diagnostika sahifasiga alohida yo'naltirish **kerak emas** — botning `/diag` buyrug'i uni shu
+> manzildan o'zi hosil qiladi. Ya'ni test tugagach `FRONTEND_URL` ni orqaga qaytarish ham
+> shart emas.
+
+Botni qayta ishga tushiring, u yangi manzilni o'qib olsin:
 
 ```bash
-docker compose restart telegram-bot        # yoki botni qayta ishga tushiring
+docker compose restart telegram-bot
 ```
 
-> Bu vaqtinchalik: `FRONTEND_URL` bot tugmasi qaysi sahifani ochishini belgilaydi. Test tugagach
-> uni odatdagi manzilga qaytarasiz (§4).
->
-> Ngrok'ning bepul tarifida URL har qayta ishga tushirishda o'zgaradi — o'zgarsa, `FRONTEND_URL`
-> ni yangilab, botni qayta ishga tushiring.
+> Ngrok'ning bepul tarifida URL har qayta ishga tushirishda o'zgaradi. O'zgarsa — `FRONTEND_URL`
+> ni yangilang va botni qayta ishga tushiring.
+
+**Ngrok ogohlantirish sahifasi.** Bepul tarifda ngrok birinchi tashrifda "You are about to visit…"
+oraliq sahifasini ko'rsatadi. Telegram ichida u ham ochiladi — **"Visit Site"** tugmasini bosing,
+keyin diagnostika sahifasi chiqadi. Agar bu Mini App'da muammo tug'dirsa (ayniqsa iOS'da),
+oraliq sahifasi bo'lmagan muqobilni ishlating:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
 
 ---
 
@@ -117,11 +127,12 @@ docker compose restart telegram-bot        # yoki botni qayta ishga tushiring
 
 Uchala qurilmada **alohida-alohida** bajaring: Android → iOS → Desktop.
 
-1. Telegram'da test botini oching → `/start` → **"Ilovani ochish / Open App"**.
+1. Telegram'da test botini oching → **`/diag`** yuboring → **"🔬 Diagnostikani ochish"**.
+   *(`/start` dagi "Open App" tugmasi odatdagi ilovani ochadi — diagnostika uchun `/diag` kerak.)*
 2. **1-tugma — "Asosiy tekshiruv"**. Jadval to'ladi, tepada xulosa qatori chiqadi.
 3. Mini App'ni **butunlay yoping**: orqaga tugmasi emas — Mini App'ni yoping va **chatdan ham
    chiqing**. Telegram'ni butunlay yopib qayta ochsangiz yanada ishonchli.
-4. Botni qayta oching → **Open App** → **2-tugma — "Qayta ochgandan keyin"**.
+4. Botni qayta oching → **`/diag`** → **"🔬 Diagnostikani ochish"** → **2-tugma — "Qayta ochgandan keyin"**.
    *Bu eng muhim qadam: D-14 dagi 7 kunlik sessiya aynan shunga bog'liq.*
 5. **3-tugma — "Silent re-auth testi"**. Bu cookie'ni **ataylab o'chiradi** va `initData` bilan
    qayta ishlashini tekshiradi. Shuning uchun uni **faqat 2-tugmadan keyin** bosing.
@@ -164,16 +175,13 @@ qo'lda yozib qo'ying va 2-tugmadagi `auth_date` bilan solishtiring.
 ## 4. Test tugagach — tozalash
 
 ```bash
-# 1. Tunnelni yoping (ngrok oynasida Ctrl+C)
-
-# 2. .env da FRONTEND_URL ni odatdagi manzilga qaytaring (yoki bo'sh qoldiring)
-FRONTEND_URL=
-
-# 3. Botni qayta ishga tushiring
-docker compose restart telegram-bot
+# 1. Tunnelni yoping (ngrok/cloudflared oynasida Ctrl+C)
+# 2. Boshqa hech narsa shart emas — FRONTEND_URL odatdagi manzil bo'lib qolgan.
 ```
 
 Test botini `@BotFather` → `/deletebot` orqali o'chirib yuborsangiz ham bo'ladi.
+Diagnostika kodi (`/diag` buyrug'i, `_diag` marshrutlari, sahifa) 0-bosqich yopilgach men
+tomonidan olib tashlanadi — `docs/TELEGRAM_WEBVIEW_MATRIX.md` §7.
 
 ---
 
@@ -197,7 +205,9 @@ D-13 / D-15 / D-19 bo'yicha yakuniy xulosa yozaman.
 | Alomat | Sabab va yechim |
 |---|---|
 | `/api/v1/_diag/env` → **404** | `DEBUG` `true` emas. `.env` ni tekshiring va backendni qayta ishga tushiring |
-| Botda "Open App" tugmasi yo'q | `FRONTEND_URL` `https://` bilan boshlanmayapti yoki bot qayta ishga tushirilmagan |
+| `/diag` "FRONTEND_URL https:// bo'lishi kerak" deydi | `.env` dagi `FRONTEND_URL` bo'sh yoki `http://`. Tunnel manzilini qo'ying va botni qayta ishga tushiring |
+| `/diag` buyrug'i umuman javob bermaydi | Bot qayta ishga tushirilmagan: `docker compose restart telegram-bot` |
+| Ngrok "You are about to visit…" sahifasi chiqdi | Bu normal — **"Visit Site"** ni bosing. Halaqit bersa `cloudflared` ga o'ting (§1.4) |
 | Sahifa ochiladi, lekin "Telegram SDK: YO'Q" | Sahifa brauzerda ochilgan. Faqat bot tugmasi orqali oching |
 | "initData mavjud: YO'Q" | Xuddi shu sabab — yoki `FRONTEND_URL` noto'g'ri sahifaga yo'naltirilgan |
 | Ngrok "ERR_NGROK_..." | Tunnel uzilgan; qayta oching va yangi URL bilan `FRONTEND_URL` ni yangilang |
