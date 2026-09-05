@@ -1,0 +1,41 @@
+name: hevy-tma
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: hevy
+      POSTGRES_PASSWORD: hevy
+      POSTGRES_DB: hevy_tma
+    ports: ['5433:5432']
+    volumes: ['hevy-tma-db:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U hevy -d hevy_tma']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  server:
+    build: ./server
+    environment:
+      DATABASE_URL: postgresql://hevy:hevy@db:5432/hevy_tma?schema=public
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      PORT: '4000'
+      NODE_ENV: production
+    ports: ['4000:4000']
+    depends_on:
+      db: { condition: service_healthy }
+    # The exercise dataset lives at the repo root; mount it for `npm run seed`.
+    volumes: ['../../data:/app/data:ro']
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:4000/api}
+    ports: ['8080:80']
+    depends_on: [server]
+
+volumes:
+  hevy-tma-db:

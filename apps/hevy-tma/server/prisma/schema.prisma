@@ -1,0 +1,279 @@
+// Hevy-style workout tracker — Telegram Mini App
+// Prisma schema: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// How a set is counted. Only NORMAL / FAILURE sets count toward volume and PRs.
+enum SetType {
+  WARMUP
+  NORMAL
+  DROP
+  FAILURE
+}
+
+enum WorkoutStatus {
+  IN_PROGRESS
+  COMPLETED
+  DISCARDED
+}
+
+enum WeightUnit {
+  KG
+  LB
+}
+
+/// Primary muscle group an exercise targets.
+enum MuscleGroup {
+  CHEST
+  BACK
+  SHOULDERS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  ABS
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  ABDUCTORS
+  ADDUCTORS
+  TRAPS
+  NECK
+  CARDIO
+  FULL_BODY
+  OTHER
+}
+
+enum Equipment {
+  BARBELL
+  DUMBBELL
+  MACHINE
+  CABLE
+  KETTLEBELL
+  BODYWEIGHT
+  BAND
+  SMITH
+  PLATE
+  OTHER
+}
+
+/// How an exercise is logged — decides which inputs the UI shows.
+enum ExerciseKind {
+  WEIGHT_REPS
+  BODYWEIGHT_REPS
+  WEIGHTED_BODYWEIGHT
+  DURATION
+  DISTANCE_DURATION
+}
+
+enum PersonalRecordType {
+  MAX_WEIGHT /// heaviest single working set
+  MAX_REPS /// most reps in a single set
+  BEST_SET_VOLUME /// highest weight x reps in a single set
+  ESTIMATED_1RM /// best Epley-estimated one-rep max
+}
+
+// ---------------------------------------------------------------------------
+// Users
+// ---------------------------------------------------------------------------
+
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Telegram numeric user id — the identity we authenticate against.
+  /// BigInt: Telegram ids already exceed 2^31.
+  telegramId   BigInt  @unique
+  username     String?
+  firstName    String?
+  lastName     String?
+  languageCode String? @db.VarChar(8)
+  photoUrl     String?
+  isPremium    Boolean @default(false)
+
+  // Preferences
+  unit                WeightUnit @default(KG)
+  defaultRestSeconds  Int        @default(120)
+  bodyweightKg        Decimal?   @db.Decimal(5, 2)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  lastSeenAt  DateTime @default(now())
+
+  workouts        Workout[]
+  personalRecords PersonalRecord[]
+  customExercises Exercise[]       @relation("UserCustomExercises")
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Exercise library
+// ---------------------------------------------------------------------------
+
+model Exercise {
+  id   String @id @default(uuid()) @db.Uuid
+  /// Stable, human-readable key, e.g. "barbell-bench-press".
+  slug String @unique
+
+  name        String
+  description String?
+
+  muscleGroup      MuscleGroup
+  secondaryMuscles MuscleGroup[] @default([])
+  equipment        Equipment     @default(OTHER)
+  kind             ExerciseKind  @default(WEIGHT_REPS)
+
+  instructions String[] @default([])
+  imageUrl     String?
+  thumbUrl     String?
+
+  /// null for the built-in library; set for a user's own exercise.
+  createdById String? @db.Uuid
+  createdBy   User?   @relation("UserCustomExercises", fields: [createdById], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workoutExercises WorkoutExercise[]
+  personalRecords  PersonalRecord[]
+
+  @@index([muscleGroup])
+  @@index([equipment])
+  @@index([createdById])
+  @@map("exercises")
+}
+
+// ---------------------------------------------------------------------------
+// Workout session
+// ---------------------------------------------------------------------------
+
+model Workout {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title  String        @default("Workout")
+  notes  String?
+  status WorkoutStatus @default(IN_PROGRESS)
+
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  /// Cached wall-clock duration in seconds, written when the workout is finished.
+  durationSec Int?
+
+  /// Denormalised totals, recomputed whenever sets change. Cheap history lists.
+  totalVolumeKg Decimal @default(0) @db.Decimal(10, 2)
+  totalSets     Int     @default(0)
+  totalReps     Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exercises WorkoutExercise[]
+
+  @@index([userId, startedAt(sort: Desc)])
+  @@index([userId, status])
+  @@map("workouts")
+}
+
+/// One exercise inside one workout — the container the sets hang off.
+model WorkoutExercise {
+  id String @id @default(uuid()) @db.Uuid
+
+  workoutId String  @db.Uuid
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+
+  exerciseId String   @db.Uuid
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Restrict)
+
+  /// Display order within the workout (0-based).
+  position    Int
+  notes       String?
+  restSeconds Int?
+
+  createdAt DateTime @default(now())
+
+  sets WorkoutSet[]
+
+  @@unique([workoutId, position])
+  @@index([exerciseId])
+  @@map("workout_exercises")
+}
+
+model WorkoutSet {
+  id String @id @default(uuid()) @db.Uuid
+
+  workoutExerciseId String          @db.Uuid
+  workoutExercise   WorkoutExercise @relation(fields: [workoutExerciseId], references: [id], onDelete: Cascade)
+
+  /// 1-based index shown in the UI (warmups render as "W").
+  setNumber Int
+  setType   SetType @default(NORMAL)
+
+  /// Always stored in kilograms; the UI converts for LB users.
+  weightKg Decimal? @db.Decimal(6, 2)
+  reps     Int?
+  /// Rate of Perceived Exertion, 0–10 in 0.5 steps.
+  rpe      Decimal? @db.Decimal(3, 1)
+
+  /// For DURATION / DISTANCE_DURATION exercises.
+  durationSec Int?
+  distanceM   Decimal? @db.Decimal(8, 2)
+
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  personalRecords PersonalRecord[]
+
+  @@unique([workoutExerciseId, setNumber])
+  @@index([workoutExerciseId])
+  @@map("workout_sets")
+}
+
+// ---------------------------------------------------------------------------
+// Personal records
+// ---------------------------------------------------------------------------
+
+/// One row per (user, exercise, record type) — always the current best.
+model PersonalRecord {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  exerciseId String   @db.Uuid
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  type PersonalRecordType
+
+  /// The comparable number: kg, reps, kg of volume, or estimated 1RM in kg.
+  value Decimal @db.Decimal(10, 2)
+
+  /// Context of the set that set the record.
+  weightKg Decimal? @db.Decimal(6, 2)
+  reps     Int?
+
+  workoutSetId String?     @db.Uuid
+  workoutSet   WorkoutSet? @relation(fields: [workoutSetId], references: [id], onDelete: SetNull)
+
+  achievedAt DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, exerciseId, type])
+  @@index([userId, achievedAt(sort: Desc)])
+  @@map("personal_records")
+}

@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /*
+   * Telegram exposes its theme as hex strings, which Tailwind's `/opacity`
+   * modifier cannot decompose. These overlay tokens give us translucent
+   * surfaces that still flip with the client's light/dark theme.
+   * `data-theme` is set from the SDK in initTelegram(); the media query is the
+   * fallback when the app runs outside Telegram.
+   */
+  :root {
+    --surface-sunken: rgba(0, 0, 0, 0.24);
+    --surface-raised: rgba(255, 255, 255, 0.06);
+    --surface-line: rgba(255, 255, 255, 0.1);
+    --surface-strong: rgba(255, 255, 255, 0.16);
+  }
+
+  :root[data-theme='light'] {
+    --surface-sunken: rgba(0, 0, 0, 0.05);
+    --surface-raised: rgba(0, 0, 0, 0.04);
+    --surface-line: rgba(0, 0, 0, 0.08);
+    --surface-strong: rgba(0, 0, 0, 0.14);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme='dark']) {
+      --surface-sunken: rgba(0, 0, 0, 0.05);
+      --surface-raised: rgba(0, 0, 0, 0.04);
+      --surface-line: rgba(0, 0, 0, 0.08);
+      --surface-strong: rgba(0, 0, 0, 0.14);
+    }
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-tg-bg text-tg-text font-sans antialiased;
+    /* The Mini App is a fixed viewport; only inner panes scroll. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Numeric keypads in Telegram render spinners we never want. */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .set-input {
+    @apply h-10 w-full rounded-lg bg-surface-sunken text-center text-[15px] font-semibold
+           text-tg-text outline-none ring-1 ring-inset ring-surface-line
+           transition focus:ring-2 focus:ring-accent
+           placeholder:font-normal placeholder:text-tg-hint;
+  }
+
+  .card {
+    @apply rounded-2xl bg-tg-secondary p-4 shadow-sm;
+  }
+}

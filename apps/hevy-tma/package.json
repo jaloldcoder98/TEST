@@ -1,0 +1,18 @@
+{
+  "name": "hevy-tma",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hevy-style workout tracker as a Telegram Mini App",
+  "workspaces": ["server", "web"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev": "npm run dev --workspaces --if-present",
+    "dev:server": "npm run dev -w @hevy-tma/server",
+    "dev:web": "npm run dev -w @hevy-tma/web",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "migrate": "npm run prisma:migrate -w @hevy-tma/server",
+    "seed": "npm run seed -w @hevy-tma/server",
+    "test": "npm run test -w @hevy-tma/server"
+  }
+}
